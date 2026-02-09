@@ -83,6 +83,19 @@ Output:
 - Build/test workflow: `.github/workflows/ci.yml`
 - Packaging workflow: `.github/workflows/package.yml`
 
+## Supported Instructions
+
+Directives:
+- `EQU`, `SET`, `ORG`, `FCB`, `FCC`, `FDB`, `RMB`, `END`
+
+Implemented mnemonics (109 total):
+- `ABA, ADCA, ADCB, ADDA, ADDB, ANDA, ANDB, ASL, ASLA, ASLB, ASR, ASRA, ASRB, BCC, BCS, BEQ, BGE, BGT, BHI, BITA, BITB, BLE, BLS, BLT, BMI, BNE, BPL, BRA, BSR, BVC, BVS, CBA, CLC, CLI, CLR, CLRA, CLRB, CLV, CMPA, CMPB, COM, COMA, COMB, CPX, DAA, DEC, DECA, DECB, DES, DEX, EORA, EORB, INC, INCA, INCB, INS, INX, JMP, JSR, LDAA, LDAB, LDS, LDX, LSR, LSRA, LSRB, NEG, NEGA, NEGB, NOP, ORAA, ORAB, PSHA, PSHB, PSHX, PULA, PULB, PULX, ROL, ROLA, ROLB, ROR, RORA, RORB, RTI, RTS, SBA, SBCA, SBCB, SEC, SEI, SEV, STAA, STAB, STS, STX, SUBA, SUBB, SWI, TAB, TAP, TBA, TPA, TST, TSTA, TSTB, TSX, TXS, WAI`
+
+Notes:
+- `BSR` is supported as a relative call and must be within signed 8-bit branch range (`-128..+127` bytes).
+- `JSR` is supported for far calls and should be used when target distance exceeds `BSR` range.
+- Relative branches are strict; the assembler does not auto-relax far branches/calls into longer sequences.
+
 ## Test Data Attribution
 Assembler validation in this project uses local/external `.asm` and `.s19` test data sourced from:
 
@@ -97,6 +110,7 @@ These sources are used to validate compatibility and output correctness. Test in
 - `tests/Hero6808.Tests` - TUnit test suite
 - `tests/corpus/local-gotahero` - source/expected S19 golden corpus
 - `tests/corpus/heathkit_hero_1_programs` - paired `.asm/.s19` compatibility corpus
+- `tests/corpus/hero-complete-instruction-set` - full instruction coverage fixture corpus
 
 ## Troubleshooting
 

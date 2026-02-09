@@ -286,7 +286,10 @@ public sealed class Assembler6800
             var delta = target - nextInstruction;
             if (delta < -128 || delta > 127)
             {
-                ThrowDiagnostic(sourceName, line.LineNumber, "branch target out of range.");
+                var message = line.Mnemonic.Equals("BSR", StringComparison.OrdinalIgnoreCase)
+                    ? "branch target out of range for BSR; use JSR for far calls."
+                    : "branch target out of range.";
+                ThrowDiagnostic(sourceName, line.LineNumber, message);
             }
 
             emitByte((byte)(delta & 0xFF));
@@ -328,7 +331,9 @@ public sealed class Assembler6800
 
     private static AddressingMode ResolveAddressingMode(ParsedLine line, IReadOnlyDictionary<string, int> symbols)
     {
-        if (line.Mnemonic is "BCC" or "BEQ" or "BHI" or "BLS" or "BNE" or "BRA" or "BSR")
+        if (line.Mnemonic is
+            "BCC" or "BCS" or "BEQ" or "BGE" or "BGT" or "BHI" or "BLE" or "BLS" or "BLT" or "BMI" or "BNE" or
+            "BPL" or "BRA" or "BSR" or "BVC" or "BVS")
         {
             return AddressingMode.Relative;
         }

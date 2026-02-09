@@ -194,6 +194,20 @@ public class Assembler6800Tests
         await Assert.That(ContainsSubsequence(code, 0x01, 0x5A, 0x26, 0xFC)).IsTrue();
     }
 
+    [Test]
+    public async Task Assemble_HeroCompleteInstructionSetFixture_Succeeds()
+    {
+        var root = FindRepoRoot();
+        var asmPath = Path.Combine(root, "tests", "corpus", "hero-complete-instruction-set", "hero_complete_instruction_set.asm");
+
+        var assembler = new Assembler6800();
+        var result = assembler.Assemble(File.ReadLines(asmPath), sourceName: asmPath);
+        var records = assembler.AssembleToS19Records(File.ReadLines(asmPath), sourceName: asmPath);
+
+        await Assert.That(result.Segments.Count).IsGreaterThan(0);
+        await Assert.That(records.Count).IsGreaterThan(1);
+    }
+
     private static bool ContainsSubsequence(byte[] data, params byte[] pattern)
     {
         if (pattern.Length == 0 || pattern.Length > data.Length)

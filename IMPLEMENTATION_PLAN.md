@@ -108,6 +108,16 @@
 - [x] Extend parser recognition for the initial Priority A mnemonic batch.
 - [x] Add unit tests and fixture coverage for the initial Priority A mnemonic batch in `tests/Hero6808.Tests` and `tests/corpus/hero-common-mnemonics/`.
 - [ ] Complete remaining Priority A mnemonic coverage (branch set, additional ALU/compare, and status/control ops).
+- [x] Add full compatibility sweep for `hero_complete_instruction_set.asm` and close all unsupported mnemonic gaps.
+- [x] Implement missing branch mnemonics from test corpus (`BCS`, `BGE`, `BGT`, `BLE`, `BLT`, `BMI`, `BPL`, `BVC`, `BVS`).
+- [x] Implement missing accumulator/memory ALU families from test corpus:
+  `ADCA`, `ADCB`, `ADDB`, `ANDB`, `ASL`, `ASLB`, `ASR`, `ASRA`, `ASRB`, `CMPB`, `COM`, `COMA`, `COMB`, `EORA`, `EORB`, `INC`, `LSR`, `LSRB`, `NEG`, `NEGA`, `NEGB`, `ORAB`, `ROL`, `ROLA`, `ROLB`, `ROR`, `RORA`, `RORB`, `SBCA`, `SBCB`, `SUBB`, `TST`.
+- [x] Implement missing control/register/status mnemonics from test corpus:
+  `CBA`, `CLC`, `CLV`, `CPX`, `DAA`, `DEC`, `DES`, `INS`, `NOP`, `SBA`, `SEC`, `SEV`, `TAP`, `TPA`, `WAI`.
+- [x] Expand parser mnemonic recognition list to include all added mnemonics.
+- [x] Add fixture corpus for full instruction coverage under `tests/corpus/hero-complete-instruction-set/` with provenance.
+- [x] Add regression test that validates no unknown-mnemonic diagnostics on full instruction coverage fixture.
+- [ ] Decide/implement strategy for out-of-range relative branches in third-party sample sources (`BSR` at line 544 in `hero_complete_instruction_set.asm`).
 - [ ] Add manual-derived compatibility fixtures (`tests/corpus/hero-manual-snippets/`) with expected S19.
 - [ ] Implement optional listing-mode parser for ROM/disassembly style input.
 - [ ] Add regression test for snippet currently failing with `LDS`.
@@ -115,7 +125,7 @@
 - [ ] Re-run full local corpus and publish pass/fail matrix in `tests/corpus/README.md`.
 
 ## Immediate Next Actions
-1. Complete remaining Priority A mnemonic coverage from the HERO expansion plan.
+1. Decide whether to keep strict relative-branch range diagnostics or add optional branch relaxation for far `BSR`/branch cases.
 2. Add `tests/corpus/hero-manual-snippets/` with extracted failing examples and expected outcomes.
 3. Decide whether listing-mode parsing is default-on or opt-in.
 4. Add ADR docs in `docs/adr/` for parser/addressing and diagnostics decisions.
