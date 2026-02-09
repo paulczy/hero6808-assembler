@@ -1,0 +1,34 @@
+name: ci
+
+on:
+  push:
+    branches: ["main"]
+  pull_request:
+    branches: ["main"]
+
+jobs:
+  build-and-test:
+    strategy:
+      fail-fast: false
+      matrix:
+        os: [windows-latest, macos-latest]
+
+    runs-on: ${{ matrix.os }}
+
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - name: Setup .NET
+        uses: actions/setup-dotnet@v4
+        with:
+          dotnet-version: "10.0.x"
+
+      - name: Restore
+        run: dotnet restore ./6808Asm.slnx
+
+      - name: Build
+        run: dotnet build ./6808Asm.slnx -c Release --no-restore
+
+      - name: Test
+        run: dotnet test --solution ./6808Asm.slnx -c Release --no-build

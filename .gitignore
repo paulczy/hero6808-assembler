@@ -1,0 +1,8 @@
+bin/
+obj/
+artifacts/
+_source_scan/
+_compare/
+.vs/
+*.user
+*.suo

@@ -1,0 +1,10 @@
+<Solution>
+  <Folder Name="/src/">
+    <Project Path="src/Asm6808.Cli/Asm6808.Cli.csproj" />
+    <Project Path="src/Asm6808.Core/Asm6808.Core.csproj" />
+  </Folder>
+  <Folder Name="/tests/">
+    <Project Path="tests/Asm6808.Tests/Asm6808.Tests.csproj" />
+  </Folder>
+</Solution>
+

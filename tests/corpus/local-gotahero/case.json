@@ -1,0 +1,14 @@
+{
+  "id": "local-gotahero",
+  "description": "Local HERO sample pair for golden testing",
+  "input": "GotAHero.asm",
+  "expectedS19": "GOTAHERO.S19",
+  "source": {
+    "asm": "H:\\paul\\Projects\\Heathkit Hero\\GotABot\\gotabot4-16-0\\GotAHero.asm",
+    "s19": "H:\\paul\\Projects\\Heathkit Hero\\GotABot\\gotabot4-16-0\\GOTAHERO.S19"
+  },
+  "sha256": {
+    "GotAHero.asm": "3A4319EE8C07C90AD2B2D8642F6F9122A7A5BB4D12BDB6B6609F628E2E4F98D3",
+    "GOTAHERO.S19": "019AD5D48EF2B837C0527337947CD309121C554D397627390283D545560E57C6"
+  }
+}

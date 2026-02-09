@@ -1,0 +1,262 @@
+{
+  "case": "local-gotahero",
+  "totals": {
+    "codeLines": 285,
+    "uniqueDirectives": 7,
+    "uniqueOpcodes": 36
+  },
+  "directives": [
+    {
+      "mnemonic": "END",
+      "count": 1
+    },
+    {
+      "mnemonic": "EQU",
+      "count": 14
+    },
+    {
+      "mnemonic": "FCB",
+      "count": 37
+    },
+    {
+      "mnemonic": "FCC",
+      "count": 7
+    },
+    {
+      "mnemonic": "FDB",
+      "count": 1
+    },
+    {
+      "mnemonic": "ORG",
+      "count": 1
+    },
+    {
+      "mnemonic": "RMB",
+      "count": 4
+    }
+  ],
+  "opcodes": [
+    {
+      "mnemonic": "ABA",
+      "count": 1
+    },
+    {
+      "mnemonic": "ADDA",
+      "count": 4
+    },
+    {
+      "mnemonic": "ANDA",
+      "count": 3
+    },
+    {
+      "mnemonic": "ASLA",
+      "count": 4
+    },
+    {
+      "mnemonic": "BCC",
+      "count": 1
+    },
+    {
+      "mnemonic": "BEQ",
+      "count": 13
+    },
+    {
+      "mnemonic": "BLS",
+      "count": 1
+    },
+    {
+      "mnemonic": "BNE",
+      "count": 9
+    },
+    {
+      "mnemonic": "BRA",
+      "count": 2
+    },
+    {
+      "mnemonic": "BSR",
+      "count": 4
+    },
+    {
+      "mnemonic": "CLI",
+      "count": 7
+    },
+    {
+      "mnemonic": "CLR",
+      "count": 2
+    },
+    {
+      "mnemonic": "CLRA",
+      "count": 2
+    },
+    {
+      "mnemonic": "CLRB",
+      "count": 3
+    },
+    {
+      "mnemonic": "CMPA",
+      "count": 22
+    },
+    {
+      "mnemonic": "INX",
+      "count": 12
+    },
+    {
+      "mnemonic": "JMP",
+      "count": 18
+    },
+    {
+      "mnemonic": "JSR",
+      "count": 35
+    },
+    {
+      "mnemonic": "LDAA",
+      "count": 9
+    },
+    {
+      "mnemonic": "LDAB",
+      "count": 3
+    },
+    {
+      "mnemonic": "LDX",
+      "count": 16
+    },
+    {
+      "mnemonic": "LSRA",
+      "count": 4
+    },
+    {
+      "mnemonic": "ORAA",
+      "count": 1
+    },
+    {
+      "mnemonic": "PSHA",
+      "count": 2
+    },
+    {
+      "mnemonic": "PULA",
+      "count": 2
+    },
+    {
+      "mnemonic": "RTS",
+      "count": 8
+    },
+    {
+      "mnemonic": "SEI",
+      "count": 2
+    },
+    {
+      "mnemonic": "STAA",
+      "count": 16
+    },
+    {
+      "mnemonic": "STAB",
+      "count": 3
+    },
+    {
+      "mnemonic": "STX",
+      "count": 4
+    },
+    {
+      "mnemonic": "SUBA",
+      "count": 1
+    },
+    {
+      "mnemonic": "SWI",
+      "count": 1
+    },
+    {
+      "mnemonic": "TAB",
+      "count": 2
+    },
+    {
+      "mnemonic": "TBA",
+      "count": 1
+    },
+    {
+      "mnemonic": "TSTA",
+      "count": 1
+    },
+    {
+      "mnemonic": "TSTB",
+      "count": 1
+    }
+  ],
+  "opcodeAddressing": [
+    {
+      "mode": "direct8",
+      "count": 4
+    },
+    {
+      "mode": "extended16",
+      "count": 3
+    },
+    {
+      "mode": "immediate",
+      "count": 49
+    },
+    {
+      "mode": "indexed",
+      "count": 15
+    },
+    {
+      "mode": "inherent",
+      "count": 53
+    },
+    {
+      "mode": "other",
+      "count": 8
+    },
+    {
+      "mode": "symbolic",
+      "count": 88
+    }
+  ],
+  "notablePatterns": {
+    "immediateCharPrefixForm": {
+      "used": true,
+      "example": "#'G"
+    },
+    "symbolPlusOffsetOperands": [
+      {
+        "line": 137,
+        "mnemonic": "STAA",
+        "operand": "DispChar+1"
+      },
+      {
+        "line": 139,
+        "mnemonic": "STAA",
+        "operand": "DispChar+2"
+      },
+      {
+        "line": 141,
+        "mnemonic": "STAA",
+        "operand": "DispChar+3"
+      },
+      {
+        "line": 143,
+        "mnemonic": "STAA",
+        "operand": "DispChar+4"
+      },
+      {
+        "line": 146,
+        "mnemonic": "STAA",
+        "operand": "DispChar+5"
+      },
+      {
+        "line": 163,
+        "mnemonic": "STAA",
+        "operand": "MoveMotor1+1"
+      },
+      {
+        "line": 165,
+        "mnemonic": "STAA",
+        "operand": "MoveMotor1+2"
+      },
+      {
+        "line": 230,
+        "mnemonic": "STAA",
+        "operand": "ScratchPad+1"
+      }
+    ]
+  }
+}
