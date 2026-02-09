@@ -16,6 +16,7 @@
 - Project license: MIT.
 - Test fixture policy: local-first corpus; do not bundle `Hero-ROMS` files in-repo until licensing is explicitly cleared.
 - Design goal: useful for HERO programs, without high implementation complexity.
+- Scope lock: support common HERO 1/Jr 6800/6808 assembly mnemonics only (no GEHPL/HF language-compiler parity).
 
 ## Confirmed Source Inventory (Agent Memory)
 - Local source + output pair:
@@ -36,6 +37,26 @@
 - Comments: `;` line comments.
 - Output: absolute S19 only.
 - Not in v1 unless required by a confirmed sample: macros, conditionals, `INCLUDE`, relocatable objects, linker.
+
+## HERO Mnemonic Expansion Plan (Targeted)
+- Goal: implement only the instruction/directive surface needed for HERO 1 / HERO Jr manuals and ROM-style examples.
+- Out of scope: compatibility with `Hero1_C-compiler` GEHPL `.HF` source language; this project remains an assembler.
+- Evidence basis:
+  - Current local corpus in `H:\paul\Projects\Heathkit Hero\heathkit_hero_1_programs` compiles 10/10.
+  - Manual listings in `H:\paul\Projects\Heathkit Hero\HERO 1 Advanced Programming and Interfacting.pdf` include additional mnemonics and listing formats (examples on pages 17-19 and 145).
+  - Repro failures observed: `unknown mnemonic 'LDS'` and parsing failure on disassembly-style lines such as `GETC B6,40,00 LDAA E #4000`.
+- Priority A (implement first):
+  - Mnemonics: `LDS`, `STS`, `BITA`, `BITB`, `RTI`, `DECB`, `INCB`, `PSHB`, `PULB`, `TSX`, `TXS`.
+  - Branch set: `BCS`, `BMI`, `BPL`, `BVC`, `BVS`, `BGE`, `BLT`, `BGT`, `BLE`.
+  - ALU and compare set: `ADDB`, `SUBB`, `CMPB`, `CPX`, `ANDB`, `ORAB`, `EORA`, `EORB`, `CBA`, `SBA`, `ABA`, `DAA`.
+  - Status/control ops: `CLC`, `SEC`, `CLV`, `NOP`, `WAI`, `TAP`, `TPA`.
+- Priority B (Hero listing ingestion support):
+  - Accept ROM/disassembly listing prefix columns (`ADDR BYTE BYTE ... MNEMONIC OPERAND`).
+  - Accept opcode-byte comma notation lines used in manual narrative listings when mnemonic is present.
+  - Keep this optional behind a parser mode switch if ambiguity appears.
+- Priority C (directive aliases only if confirmed in Hero sources):
+  - Aliases to consider: `DB -> FCB`, `DW -> FDB`.
+  - Do not add `SEGMENT/ENDS/ASSUME` unless an actual HERO source file requires it.
 
 ## .NET Implementation Notes
 - Target: `.NET 10` console app and class library.
@@ -82,11 +103,21 @@
 - [x] CI builds for macOS and Windows.
 - [x] Zip packaging and release notes (workflow + packaging script).
 
+### Phase 6 - HERO Compatibility Expansion
+- [ ] Add opcode encodings for Priority A mnemonics in `src/Hero6808.Core/Assembly/OpcodeTable.cs`.
+- [ ] Extend parser/mode resolution for new branch/inherent/indexed/immediate variants.
+- [ ] Add unit tests per mnemonic and addressing mode in `tests/Hero6808.Tests`.
+- [ ] Add manual-derived compatibility fixtures (`tests/corpus/hero-manual-snippets/`) with expected S19.
+- [ ] Implement optional listing-mode parser for ROM/disassembly style input.
+- [ ] Add regression test for snippet currently failing with `LDS`.
+- [ ] Add regression test for manual I/O driver listing normalization path.
+- [ ] Re-run full local corpus and publish pass/fail matrix in `tests/corpus/README.md`.
+
 ## Immediate Next Actions
-1. Add ADR docs in `docs/adr/` for parser/addressing and diagnostics decisions.
-2. Expand corpus cautiously with additional local samples to drive new directives/opcodes.
-3. Add a simple README section documenting `.NET 10` + TUnit runner behavior (`dotnet test --solution`).
-4. Optionally add `osx-arm64` packaging target if needed for Apple Silicon distribution.
+1. Implement Priority A mnemonic coverage from the HERO expansion plan.
+2. Add `tests/corpus/hero-manual-snippets/` with extracted failing examples and expected outcomes.
+3. Decide whether listing-mode parsing is default-on or opt-in.
+4. Add ADR docs in `docs/adr/` for parser/addressing and diagnostics decisions.
 
 ## Decision Log
 - 2026-02-09: User selected .NET implementation platform.
