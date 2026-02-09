@@ -40,6 +40,59 @@ public class Assembler6800Tests
     }
 
     [Test]
+    public async Task Assemble_HeroCommonMnemonicsFixture_EncodesExpectedBytes()
+    {
+        var root = FindRepoRoot();
+        var asmPath = Path.Combine(root, "tests", "corpus", "hero-common-mnemonics", "common_stack_and_bit.asm");
+
+        var assembler = new Assembler6800();
+        var result = assembler.Assemble(File.ReadLines(asmPath), sourceName: asmPath);
+
+        await Assert.That(result.Segments.Count).IsEqualTo(1);
+        var segment = result.Segments[0];
+        await Assert.That(segment.StartAddress).IsEqualTo((ushort)0x0100);
+        await Assert.That(segment.Data.SequenceEqual(
+                new byte[]
+                {
+                    0x8E, 0x0F, 0xDF, // LDS #$0FDF
+                    0x9F, 0x20,       // STS $20
+                    0x85, 0x02,       // BITA #$02
+                    0xD5, 0x30,       // BITB $30
+                    0x5C,             // INCB
+                    0x5A,             // DECB
+                    0x37,             // PSHB
+                    0x33,             // PULB
+                    0x30,             // TSX
+                    0x35,             // TXS
+                    0x3B              // RTI
+                }))
+            .IsTrue();
+    }
+
+    [Test]
+    public async Task Assemble_HeroCommonIndexedFixture_EncodesExpectedBytes()
+    {
+        var root = FindRepoRoot();
+        var asmPath = Path.Combine(root, "tests", "corpus", "hero-common-mnemonics", "common_stack_and_bit_indexed.asm");
+
+        var assembler = new Assembler6800();
+        var result = assembler.Assemble(File.ReadLines(asmPath), sourceName: asmPath);
+
+        await Assert.That(result.Segments.Count).IsEqualTo(1);
+        var segment = result.Segments[0];
+        await Assert.That(segment.StartAddress).IsEqualTo((ushort)0x0120);
+        await Assert.That(segment.Data.SequenceEqual(
+                new byte[]
+                {
+                    0xBE, 0x12, 0x34, // LDS $1234
+                    0xBF, 0x12, 0x34, // STS $1234
+                    0xA5, 0x10,       // BITA $10,X
+                    0xE5, 0x20        // BITB $20,X
+                }))
+            .IsTrue();
+    }
+
+    [Test]
     public async Task Assemble_ReportsDiagnosticWithFileLineFormat_OnUnknownMnemonic()
     {
         var source = new[]

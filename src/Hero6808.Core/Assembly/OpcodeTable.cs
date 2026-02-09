@@ -27,6 +27,22 @@ internal static class OpcodeTable
             ["ASLA"] = new() { [AddressingMode.Inherent] = new(0x48, 0) },
             ["BCC"] = new() { [AddressingMode.Relative] = new(0x24, 1) },
             ["BEQ"] = new() { [AddressingMode.Relative] = new(0x27, 1) },
+            ["BITA"] =
+                new()
+                {
+                    [AddressingMode.Immediate] = new(0x85, 1),
+                    [AddressingMode.Direct] = new(0x95, 1),
+                    [AddressingMode.Indexed] = new(0xA5, 1),
+                    [AddressingMode.Extended] = new(0xB5, 2)
+                },
+            ["BITB"] =
+                new()
+                {
+                    [AddressingMode.Immediate] = new(0xC5, 1),
+                    [AddressingMode.Direct] = new(0xD5, 1),
+                    [AddressingMode.Indexed] = new(0xE5, 1),
+                    [AddressingMode.Extended] = new(0xF5, 2)
+                },
             ["BHI"] = new() { [AddressingMode.Relative] = new(0x22, 1) },
             ["BLS"] = new() { [AddressingMode.Relative] = new(0x23, 1) },
             ["BNE"] = new() { [AddressingMode.Relative] = new(0x26, 1) },
@@ -80,6 +96,14 @@ internal static class OpcodeTable
                     [AddressingMode.Indexed] = new(0xE6, 1),
                     [AddressingMode.Extended] = new(0xF6, 2)
                 },
+            ["LDS"] =
+                new()
+                {
+                    [AddressingMode.Immediate] = new(0x8E, 2),
+                    [AddressingMode.Direct] = new(0x9E, 1),
+                    [AddressingMode.Indexed] = new(0xAE, 1),
+                    [AddressingMode.Extended] = new(0xBE, 2)
+                },
             ["LDX"] =
                 new()
                 {
@@ -115,6 +139,13 @@ internal static class OpcodeTable
                     [AddressingMode.Indexed] = new(0xE7, 1),
                     [AddressingMode.Extended] = new(0xF7, 2)
                 },
+            ["STS"] =
+                new()
+                {
+                    [AddressingMode.Direct] = new(0x9F, 1),
+                    [AddressingMode.Indexed] = new(0xAF, 1),
+                    [AddressingMode.Extended] = new(0xBF, 2)
+                },
             ["STX"] =
                 new()
                 {
@@ -130,11 +161,18 @@ internal static class OpcodeTable
                     [AddressingMode.Indexed] = new(0xA0, 1),
                     [AddressingMode.Extended] = new(0xB0, 2)
                 },
+            ["DECB"] = new() { [AddressingMode.Inherent] = new(0x5A, 0) },
+            ["INCB"] = new() { [AddressingMode.Inherent] = new(0x5C, 0) },
+            ["PSHB"] = new() { [AddressingMode.Inherent] = new(0x37, 0) },
+            ["PULB"] = new() { [AddressingMode.Inherent] = new(0x33, 0) },
+            ["RTI"] = new() { [AddressingMode.Inherent] = new(0x3B, 0) },
             ["SWI"] = new() { [AddressingMode.Inherent] = new(0x3F, 0) },
             ["TAB"] = new() { [AddressingMode.Inherent] = new(0x16, 0) },
             ["TBA"] = new() { [AddressingMode.Inherent] = new(0x17, 0) },
             ["TSTA"] = new() { [AddressingMode.Inherent] = new(0x4D, 0) },
-            ["TSTB"] = new() { [AddressingMode.Inherent] = new(0x5D, 0) }
+            ["TSTB"] = new() { [AddressingMode.Inherent] = new(0x5D, 0) },
+            ["TSX"] = new() { [AddressingMode.Inherent] = new(0x30, 0) },
+            ["TXS"] = new() { [AddressingMode.Inherent] = new(0x35, 0) }
         };
 
     public static bool IsKnownMnemonic(string mnemonic) => Table.ContainsKey(mnemonic);
