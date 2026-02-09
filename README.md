@@ -8,7 +8,37 @@ Current status:
 - Output format: Motorola S19
 - Corpus-backed golden test: `tests/corpus/local-gotahero`
 
-## Quick Start
+## Quick Start (Release ZIP)
+
+### 1. Download
+- Open the latest release on GitHub.
+- Download the ZIP for your platform:
+  - `Hero6808-win-x64.zip`
+  - `Hero6808-osx-arm64.zip` (Apple Silicon)
+  - `Hero6808-osx-x64.zip` (Apple Intel)
+
+### 2. Extract
+- Extract the ZIP to a folder you control.
+
+### 3. Run the CLI
+
+Windows (`win-x64`):
+```powershell
+.\Hero6808.Cli.exe assemble .\input.asm -o .\output.s19
+```
+
+macOS Intel (`osx-x64`) and Apple Silicon (`osx-arm64`):
+```bash
+chmod +x ./Hero6808.Cli
+./Hero6808.Cli assemble ./input.asm -o ./output.s19
+```
+
+CLI usage:
+```text
+Hero6808.Cli assemble <input.asm> -o <output.s19>
+```
+
+## Quick Start (Build from Source)
 
 ### 1. Prerequisites
 - .NET SDK 10.x
@@ -38,12 +68,13 @@ If there is no output from `Compare-Object`, the files match.
 ## Packaging
 Create self-contained zip artifacts:
 ```powershell
-.\scripts\package.ps1 -Configuration Release -RuntimeIdentifiers win-x64,osx-x64
+.\scripts\package.ps1 -Configuration Release -RuntimeIdentifiers win-x64,osx-x64,osx-arm64
 ```
 
 Output:
 - `artifacts\packages\Hero6808-win-x64.zip`
 - `artifacts\packages\Hero6808-osx-x64.zip`
+- `artifacts\packages\Hero6808-osx-arm64.zip`
 
 ## CI
 - Build/test workflow: `.github/workflows/ci.yml`

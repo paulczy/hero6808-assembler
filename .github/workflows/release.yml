@@ -103,7 +103,7 @@ jobs:
       - name: Package release artifacts
         if: steps.semver.outputs.should_release == 'true'
         shell: pwsh
-        run: .\scripts\package.ps1 -Configuration Release -RuntimeIdentifiers win-x64,osx-x64
+        run: .\scripts\package.ps1 -Configuration Release -RuntimeIdentifiers win-x64,osx-x64,osx-arm64
 
       - name: Verify packaged ZIP files
         if: steps.semver.outputs.should_release == 'true'

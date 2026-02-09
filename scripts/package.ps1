@@ -1,6 +1,6 @@
 param(
     [string]$Configuration = "Release",
-    [string[]]$RuntimeIdentifiers = @("win-x64", "osx-x64"),
+    [string[]]$RuntimeIdentifiers = @("win-x64", "osx-x64", "osx-arm64"),
     [string]$OutputRoot = "artifacts"
 )
 
