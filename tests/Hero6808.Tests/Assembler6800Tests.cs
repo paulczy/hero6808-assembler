@@ -122,6 +122,35 @@ public class Assembler6800Tests
     }
 
     [Test]
+    public async Task Assemble_ReportsMasmDialectDiagnostic_ForX86StyleSource()
+    {
+        var source = new[]
+        {
+            "DATA SEGMENT PARA 'DATA'",
+            "NIBH DB ?",
+            "DATA ENDS"
+        };
+
+        var assembler = new Assembler6800();
+        var threw = false;
+        var message = string.Empty;
+
+        try
+        {
+            assembler.Assemble(source, sourceName: "sendbyte.asm");
+        }
+        catch (InvalidOperationException ex)
+        {
+            threw = true;
+            message = ex.Message;
+        }
+
+        await Assert.That(threw).IsTrue();
+        await Assert.That(message.StartsWith("sendbyte.asm:1:")).IsTrue();
+        await Assert.That(message.Contains("MASM/x86-style syntax")).IsTrue();
+    }
+
+    [Test]
     public async Task Assemble_ReportsDiagnosticWithFileLineFormat_OnUnresolvedSymbol()
     {
         var source = new[]

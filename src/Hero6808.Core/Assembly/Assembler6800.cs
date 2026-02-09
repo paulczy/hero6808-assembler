@@ -19,6 +19,28 @@ public sealed class Assembler6800
         "END"
     ];
 
+    private static readonly HashSet<string> LikelyMasmX86Tokens =
+    [
+        "ASSUME",
+        "CODE",
+        "DATA",
+        "DB",
+        "DD",
+        "DQ",
+        "DW",
+        "DUP",
+        "ENDP",
+        "ENDS",
+        "INT",
+        "LEA",
+        "MODEL",
+        "OFFSET",
+        "PROC",
+        "PTR",
+        "SEGMENT",
+        "STACK"
+    ];
+
     public AssemblyResult Assemble(IEnumerable<string> sourceLines, string sourceName = "<input>")
     {
         var parsedLines = ParseLines(sourceLines);
@@ -128,6 +150,14 @@ public sealed class Assembler6800
 
             if (!OpcodeTable.IsKnownMnemonic(mnemonic))
             {
+                if (LooksLikeMasmX86Dialect(line))
+                {
+                    ThrowDiagnostic(
+                        sourceName,
+                        line.LineNumber,
+                        $"detected MASM/x86-style syntax near '{mnemonic}'. Hero6808 assembles Motorola 6800/6808 source.");
+                }
+
                 ThrowDiagnostic(sourceName, line.LineNumber, $"unknown mnemonic '{mnemonic}'.");
             }
 
@@ -410,6 +440,30 @@ public sealed class Assembler6800
         }
 
         return value;
+    }
+
+    private static bool LooksLikeMasmX86Dialect(ParsedLine line)
+    {
+        if (LikelyMasmX86Tokens.Contains(line.Mnemonic))
+        {
+            return true;
+        }
+
+        if (line.OperandText.Length == 0)
+        {
+            return false;
+        }
+
+        var parts = line.OperandText.Split([' ', '\t', ','], StringSplitOptions.RemoveEmptyEntries);
+        foreach (var part in parts)
+        {
+            if (LikelyMasmX86Tokens.Contains(part.ToUpperInvariant()))
+            {
+                return true;
+            }
+        }
+
+        return false;
     }
 
     private static List<string> SplitCsv(string operandText)
