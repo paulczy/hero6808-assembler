@@ -10,3 +10,5 @@ _compare/
 _tmp_compile_check/
 
 _tmp_pdf_repro/
+
+_tmp/

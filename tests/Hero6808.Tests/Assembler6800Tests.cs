@@ -169,6 +169,24 @@ public class Assembler6800Tests
     }
 
     [Test]
+    public async Task Assemble_FccAcceptsSingleQuotedString()
+    {
+        var source = new[]
+        {
+            "ORG $0200",
+            "FCC 'HI'",
+            "END"
+        };
+
+        var assembler = new Assembler6800();
+        var result = assembler.Assemble(source, sourceName: "fcc.asm");
+        var segment = result.Segments[0];
+
+        await Assert.That(segment.StartAddress).IsEqualTo((ushort)0x0200);
+        await Assert.That(segment.Data.SequenceEqual(new byte[] { 0x48, 0x49 })).IsTrue();
+    }
+
+    [Test]
     public async Task Assemble_HeroJrAnalysisFixture_PreservesStackAndDelayInstructions()
     {
         var root = FindRepoRoot();

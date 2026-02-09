@@ -422,9 +422,20 @@ public sealed class Assembler6800
     private static string ParseFccText(string operandText, int lineNumber, string sourceName)
     {
         var trimmed = operandText.Trim();
-        if (trimmed.Length < 2 || trimmed[0] != '"' || trimmed[^1] != '"')
+        if (trimmed.Length < 2)
         {
-            ThrowDiagnostic(sourceName, lineNumber, "FCC currently requires a double-quoted string.");
+            ThrowDiagnostic(sourceName, lineNumber, "FCC requires a delimited string literal.");
+        }
+
+        var delimiter = trimmed[0];
+        if (char.IsLetterOrDigit(delimiter) || char.IsWhiteSpace(delimiter))
+        {
+            ThrowDiagnostic(sourceName, lineNumber, "FCC requires a quoted or delimited string literal.");
+        }
+
+        if (trimmed[^1] != delimiter)
+        {
+            ThrowDiagnostic(sourceName, lineNumber, "FCC string delimiter must match at both ends.");
         }
 
         return trimmed[1..^1];
