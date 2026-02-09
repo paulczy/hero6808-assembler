@@ -36,6 +36,7 @@ public static partial class LineParser
         "CLRA",
         "CLRB",
         "CMPA",
+        "DECA",
         "DECB",
         "DEX",
         "EQU",
@@ -49,11 +50,14 @@ public static partial class LineParser
         "LDS",
         "LDX",
         "LSRA",
+        "NOP",
         "ORAA",
         "PSHA",
         "PSHB",
+        "PSHX",
         "PULA",
         "PULB",
+        "PULX",
         "RTI",
         "RTS",
         "SET",
@@ -79,7 +83,9 @@ public static partial class LineParser
             throw new ArgumentNullException(nameof(rawLine));
         }
 
-        var codePart = StripComment(rawLine).Trim();
+        var stripped = StripComment(rawLine);
+        var hasLeadingWhitespace = stripped.Length > 0 && char.IsWhiteSpace(stripped[0]);
+        var codePart = stripped.Trim();
         if (string.IsNullOrWhiteSpace(codePart))
         {
             return null;
@@ -130,6 +136,19 @@ public static partial class LineParser
         }
         else if (tokens.Length == 1)
         {
+            // Preserve "label-only" lines, but avoid silently accepting indented unknown
+            // opcodes (e.g., "    DECA") as labels.
+            if (hasLeadingWhitespace)
+            {
+                mnemonic = tokens[0].ToUpperInvariant();
+                return new ParsedLine(
+                    LineNumber: lineNumber,
+                    RawText: rawLine,
+                    Label: null,
+                    Mnemonic: mnemonic,
+                    OperandText: string.Empty);
+            }
+
             return new ParsedLine(
                 LineNumber: lineNumber,
                 RawText: rawLine,

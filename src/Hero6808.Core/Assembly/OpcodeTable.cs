@@ -65,6 +65,7 @@ internal static class OpcodeTable
                     [AddressingMode.Indexed] = new(0xA1, 1),
                     [AddressingMode.Extended] = new(0xB1, 2)
                 },
+            ["DECA"] = new() { [AddressingMode.Inherent] = new(0x4A, 0) },
             ["DEX"] = new() { [AddressingMode.Inherent] = new(0x09, 0) },
             ["INCA"] = new() { [AddressingMode.Inherent] = new(0x4C, 0) },
             ["INX"] = new() { [AddressingMode.Inherent] = new(0x08, 0) },
@@ -113,6 +114,7 @@ internal static class OpcodeTable
                     [AddressingMode.Extended] = new(0xFE, 2)
                 },
             ["LSRA"] = new() { [AddressingMode.Inherent] = new(0x44, 0) },
+            ["NOP"] = new() { [AddressingMode.Inherent] = new(0x01, 0) },
             ["ORAA"] =
                 new()
                 {
@@ -123,6 +125,8 @@ internal static class OpcodeTable
                 },
             ["PSHA"] = new() { [AddressingMode.Inherent] = new(0x36, 0) },
             ["PULA"] = new() { [AddressingMode.Inherent] = new(0x32, 0) },
+            ["PSHX"] = new() { [AddressingMode.Inherent] = new(0x3C, 0) },
+            ["PULX"] = new() { [AddressingMode.Inherent] = new(0x38, 0) },
             ["RTS"] = new() { [AddressingMode.Inherent] = new(0x39, 0) },
             ["SEI"] = new() { [AddressingMode.Inherent] = new(0x0F, 0) },
             ["STAA"] =

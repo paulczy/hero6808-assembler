@@ -168,6 +168,60 @@ public class Assembler6800Tests
         await Assert.That(segment.Data.SequenceEqual(new byte[] { 0x96, 0x11 })).IsTrue();
     }
 
+    [Test]
+    public async Task Assemble_HeroJrAnalysisFixture_PreservesStackAndDelayInstructions()
+    {
+        var root = FindRepoRoot();
+        var asmPath = Path.Combine(root, "tests", "corpus", "hero-jr-analysis", "hero_jr_from_md.asm");
+
+        var assembler = new Assembler6800();
+        var result = assembler.Assemble(File.ReadLines(asmPath), sourceName: asmPath);
+
+        await Assert.That(result.Segments.Count).IsEqualTo(2);
+
+        var code = result.Segments.Single(s => s.StartAddress == 0xE000).Data;
+
+        // SAY_HELLO_WORLD prologue/epilogue must preserve X.
+        await Assert.That(ContainsSubsequence(code, 0x36, 0x3C, 0xCE)).IsTrue();
+        await Assert.That(ContainsSubsequence(code, 0x38, 0x32, 0x39)).IsTrue();
+
+        // DRIVE_CIRCLE and DELAY_1SEC must include DECA in their outer loops.
+        await Assert.That(ContainsSubsequence(code, 0x5A, 0x26, 0xFA, 0x4A, 0x26)).IsTrue();
+        await Assert.That(ContainsSubsequence(code, 0x5A, 0x26, 0xF9, 0x4A, 0x26)).IsTrue();
+
+        // DELAY_1SEC and DELAY_SHORT must include NOP timing pads.
+        await Assert.That(ContainsSubsequence(code, 0x01, 0x01, 0x01, 0x01, 0x5A, 0x26)).IsTrue();
+        await Assert.That(ContainsSubsequence(code, 0x01, 0x5A, 0x26, 0xFC)).IsTrue();
+    }
+
+    private static bool ContainsSubsequence(byte[] data, params byte[] pattern)
+    {
+        if (pattern.Length == 0 || pattern.Length > data.Length)
+        {
+            return false;
+        }
+
+        for (var i = 0; i <= data.Length - pattern.Length; i++)
+        {
+            var match = true;
+            for (var j = 0; j < pattern.Length; j++)
+            {
+                if (data[i + j] != pattern[j])
+                {
+                    match = false;
+                    break;
+                }
+            }
+
+            if (match)
+            {
+                return true;
+            }
+        }
+
+        return false;
+    }
+
     private static string FindRepoRoot()
     {
         var current = new DirectoryInfo(AppContext.BaseDirectory);

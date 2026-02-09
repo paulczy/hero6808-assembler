@@ -52,6 +52,16 @@ public class ParserAndExpressionTests
     }
 
     [Test]
+    public async Task LineParser_ParsesSingleTokenKnownMnemonicWithoutIndent()
+    {
+        var parsed = LineParser.Parse("PSHX", 11);
+        await Assert.That(parsed is not null).IsTrue();
+        await Assert.That(parsed!.Label is null).IsTrue();
+        await Assert.That(parsed.Mnemonic).IsEqualTo("PSHX");
+        await Assert.That(parsed.OperandText).IsEqualTo(string.Empty);
+    }
+
+    [Test]
     public async Task ExpressionEvaluator_EvaluatesHexDecimalCharAndSymbolMath()
     {
         var symbols = new Dictionary<string, int>
