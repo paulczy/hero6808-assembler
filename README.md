@@ -29,9 +29,12 @@ Windows (`win-x64`):
 
 macOS Intel (`osx-x64`) and Apple Silicon (`osx-arm64`):
 ```bash
+xattr -dr com.apple.quarantine ./Hero6808.Cli
 chmod +x ./Hero6808.Cli
 ./Hero6808.Cli assemble ./input.asm -o ./output.s19
 ```
+
+If macOS shows "Apple could not verify it is free of malware", run the `xattr` command above once on the extracted binary, then run it again.
 
 CLI usage:
 ```text
