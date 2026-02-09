@@ -1,4 +1,4 @@
-# Asm6808
+# Hero6808
 
 A cross assembler for Motorola 6800/6808-style code, focused on Heathkit HERO 1 and HERO Jr workflows.
 
