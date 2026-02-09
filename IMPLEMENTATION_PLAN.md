@@ -104,9 +104,10 @@
 - [x] Zip packaging and release notes (workflow + packaging script).
 
 ### Phase 6 - HERO Compatibility Expansion
-- [ ] Add opcode encodings for Priority A mnemonics in `src/Hero6808.Core/Assembly/OpcodeTable.cs`.
-- [ ] Extend parser/mode resolution for new branch/inherent/indexed/immediate variants.
-- [ ] Add unit tests per mnemonic and addressing mode in `tests/Hero6808.Tests`.
+- [x] Add initial Priority A opcode batch in `src/Hero6808.Core/Assembly/OpcodeTable.cs` (`LDS`, `STS`, `BITA`, `BITB`, `INCB`, `DECB`, `PSHB`, `PULB`, `TSX`, `TXS`, `RTI`).
+- [x] Extend parser recognition for the initial Priority A mnemonic batch.
+- [x] Add unit tests and fixture coverage for the initial Priority A mnemonic batch in `tests/Hero6808.Tests` and `tests/corpus/hero-common-mnemonics/`.
+- [ ] Complete remaining Priority A mnemonic coverage (branch set, additional ALU/compare, and status/control ops).
 - [ ] Add manual-derived compatibility fixtures (`tests/corpus/hero-manual-snippets/`) with expected S19.
 - [ ] Implement optional listing-mode parser for ROM/disassembly style input.
 - [ ] Add regression test for snippet currently failing with `LDS`.
@@ -114,7 +115,7 @@
 - [ ] Re-run full local corpus and publish pass/fail matrix in `tests/corpus/README.md`.
 
 ## Immediate Next Actions
-1. Implement Priority A mnemonic coverage from the HERO expansion plan.
+1. Complete remaining Priority A mnemonic coverage from the HERO expansion plan.
 2. Add `tests/corpus/hero-manual-snippets/` with extracted failing examples and expected outcomes.
 3. Decide whether listing-mode parsing is default-on or opt-in.
 4. Add ADR docs in `docs/adr/` for parser/addressing and diagnostics decisions.
@@ -133,6 +134,7 @@
 - 2026-02-09: CLI `assemble` command wired to emit S19 files.
 - 2026-02-09: Added negative-path diagnostic tests and standardized diagnostics to `source:line:message`.
 - 2026-02-09: Added GitHub Actions workflows for CI (`.github/workflows/ci.yml`) and packaging (`.github/workflows/package.yml`), plus `scripts/package.ps1`.
+- 2026-02-09: Implemented initial HERO common mnemonic batch (`LDS`, `STS`, `BITA`, `BITB`, `INCB`, `DECB`, `PSHB`, `PULB`, `TSX`, `TXS`, `RTI`) with new fixture-based tests under `tests/corpus/hero-common-mnemonics`.
 
 
 
