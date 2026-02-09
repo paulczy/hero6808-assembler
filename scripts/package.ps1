@@ -29,7 +29,13 @@ foreach ($rid in $RuntimeIdentifiers) {
         --self-contained true `
         /p:PublishSingleFile=true `
         /p:IncludeNativeLibrariesForSelfExtract=true `
+        /p:DebugSymbols=false `
+        /p:DebugType=None `
         -o $publishDir
+
+    # Ensure release archives do not include debug symbol files.
+    Get-ChildItem -Path $publishDir -Filter *.pdb -Recurse -File -ErrorAction SilentlyContinue |
+        Remove-Item -Force -ErrorAction SilentlyContinue
 
     $zipName = "asm6808-$rid.zip"
     $zipPath = Join-Path $packageRoot $zipName
