@@ -1,6 +1,6 @@
 using System.Text.RegularExpressions;
 
-namespace Asm6808.Core.Parsing;
+namespace Hero6808.Core.Parsing;
 
 public static partial class LineParser
 {
@@ -172,4 +172,5 @@ public static partial class LineParser
         return KnownMnemonics.Contains(upper) || Directives.Contains(upper);
     }
 }
+
 

@@ -1,7 +1,7 @@
 using System.Globalization;
 using System.Text.RegularExpressions;
 
-namespace Asm6808.Core.Expressions;
+namespace Hero6808.Core.Expressions;
 
 public static class ExpressionEvaluator
 {
@@ -141,4 +141,5 @@ public static class ExpressionEvaluator
         return Regex.IsMatch(term, "^[A-Za-z_][A-Za-z0-9_]*$");
     }
 }
+
 

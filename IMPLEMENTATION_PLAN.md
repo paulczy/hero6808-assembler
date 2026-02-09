@@ -39,12 +39,12 @@
 
 ## .NET Implementation Notes
 - Target: `.NET 10` console app and class library.
-- Solution format: `6808Asm.slnx`.
+- Solution format: `Hero6808.slnx`.
 - Build artifacts: self-contained zip for Windows and macOS.
 - Project layout:
-  - `src/Asm6808.Cli`
-  - `src/Asm6808.Core`
-  - `tests/Asm6808.Tests`
+  - `src/Hero6808.Cli`
+  - `src/Hero6808.Core`
+  - `tests/Hero6808.Tests`
 
 ## To-Do Backlog
 
@@ -95,11 +95,13 @@
 - 2026-02-09: User selected MIT license.
 - 2026-02-09: User approved local-first test fixtures and no immediate in-repo `Hero-ROMS` bundling.
 - 2026-02-09: User requested .NET 10 specifically.
-- 2026-02-09: Scaffold completed with `6808Asm.slnx`, `src/Asm6808.Core`, `src/Asm6808.Cli`, `tests/Asm6808.Tests`.
+- 2026-02-09: Scaffold completed with `Hero6808.slnx`, `src/Hero6808.Core`, `src/Hero6808.Cli`, `tests/Hero6808.Tests`.
 - 2026-02-09: Added S19 writer implementation and passing checksum/splitting unit tests.
 - 2026-02-09: Two-pass assembler core implemented for corpus scope (directives + opcode encoding + symbol resolution).
 - 2026-02-09: Golden corpus test added and verified exact match with `tests/corpus/local-gotahero/GOTAHERO.S19`.
 - 2026-02-09: CLI `assemble` command wired to emit S19 files.
 - 2026-02-09: Added negative-path diagnostic tests and standardized diagnostics to `source:line:message`.
 - 2026-02-09: Added GitHub Actions workflows for CI (`.github/workflows/ci.yml`) and packaging (`.github/workflows/package.yml`), plus `scripts/package.ps1`.
+
+
 

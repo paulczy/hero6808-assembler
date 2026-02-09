@@ -25,10 +25,11 @@ jobs:
           dotnet-version: "10.0.x"
 
       - name: Restore
-        run: dotnet restore ./6808Asm.slnx
+        run: dotnet restore ./Hero6808.slnx
 
       - name: Build
-        run: dotnet build ./6808Asm.slnx -c Release --no-restore
+        run: dotnet build ./Hero6808.slnx -c Release --no-restore
 
       - name: Test
-        run: dotnet test --solution ./6808Asm.slnx -c Release --no-build
+        run: dotnet test --solution ./Hero6808.slnx -c Release --no-build
+

@@ -1,4 +1,4 @@
-using Asm6808.Core.Assembly;
+using Hero6808.Core.Assembly;
 
 if (args.Length == 0)
 {
@@ -66,6 +66,7 @@ static string? GetOutputPath(string[] args)
 static void PrintUsage()
 {
     Console.WriteLine("Usage:");
-    Console.WriteLine("  Asm6808.Cli assemble <input.asm> -o <output.s19>");
+    Console.WriteLine("  Hero6808.Cli assemble <input.asm> -o <output.s19>");
 }
+
 

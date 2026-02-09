@@ -1,6 +1,6 @@
-using Asm6808.Core.Assembly;
+using Hero6808.Core.Assembly;
 
-namespace Asm6808.Tests;
+namespace Hero6808.Tests;
 
 public class Assembler6800Tests
 {
@@ -120,7 +120,7 @@ public class Assembler6800Tests
         var current = new DirectoryInfo(AppContext.BaseDirectory);
         while (current is not null)
         {
-            var slnx = Path.Combine(current.FullName, "6808Asm.slnx");
+            var slnx = Path.Combine(current.FullName, "Hero6808.slnx");
             if (File.Exists(slnx))
             {
                 return current.FullName;
@@ -132,4 +132,6 @@ public class Assembler6800Tests
         throw new InvalidOperationException("Could not locate repository root from test base directory.");
     }
 }
+
+
 

@@ -1,4 +1,4 @@
-namespace Asm6808.Core.Assembly;
+namespace Hero6808.Core.Assembly;
 
 public enum AddressingMode
 {
@@ -9,4 +9,5 @@ public enum AddressingMode
     Extended,
     Relative
 }
+
 

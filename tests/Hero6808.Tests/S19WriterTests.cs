@@ -1,6 +1,6 @@
-using Asm6808.Core.SRecords;
+using Hero6808.Core.SRecords;
 
-namespace Asm6808.Tests;
+namespace Hero6808.Tests;
 
 public class S19WriterTests
 {
@@ -65,4 +65,5 @@ public class S19WriterTests
         await Assert.That(threwHigh).IsTrue();
     }
 }
+
 

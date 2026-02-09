@@ -1,4 +1,4 @@
-namespace Asm6808.Core.Parsing;
+namespace Hero6808.Core.Parsing;
 
 public sealed record ParsedLine(
     int LineNumber,
@@ -6,4 +6,5 @@ public sealed record ParsedLine(
     string? Label,
     string Mnemonic,
     string OperandText);
+
 

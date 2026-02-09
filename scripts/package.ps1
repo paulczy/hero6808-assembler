@@ -8,7 +8,7 @@ $ErrorActionPreference = "Stop"
 
 $scriptDir = Split-Path -Parent $MyInvocation.MyCommand.Path
 $repoRoot = Split-Path -Parent $scriptDir
-$projectPath = Join-Path $repoRoot "src/Asm6808.Cli/Asm6808.Cli.csproj"
+$projectPath = Join-Path $repoRoot "src/Hero6808.Cli/Hero6808.Cli.csproj"
 $publishRoot = Join-Path $repoRoot (Join-Path $OutputRoot "publish")
 $packageRoot = Join-Path $repoRoot (Join-Path $OutputRoot "packages")
 
@@ -37,7 +37,7 @@ foreach ($rid in $RuntimeIdentifiers) {
     Get-ChildItem -Path $publishDir -Filter *.pdb -Recurse -File -ErrorAction SilentlyContinue |
         Remove-Item -Force -ErrorAction SilentlyContinue
 
-    $zipName = "asm6808-$rid.zip"
+    $zipName = "Hero6808-$rid.zip"
     $zipPath = Join-Path $packageRoot $zipName
     if (Test-Path $zipPath) {
         Remove-Item -Path $zipPath -Force
@@ -46,3 +46,4 @@ foreach ($rid in $RuntimeIdentifiers) {
     [System.IO.Compression.ZipFile]::CreateFromDirectory($publishDir, $zipPath)
     Write-Host "Created $zipPath"
 }
+

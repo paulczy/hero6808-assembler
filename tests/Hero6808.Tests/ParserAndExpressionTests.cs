@@ -1,7 +1,7 @@
-using Asm6808.Core.Expressions;
-using Asm6808.Core.Parsing;
+using Hero6808.Core.Expressions;
+using Hero6808.Core.Parsing;
 
-namespace Asm6808.Tests;
+namespace Hero6808.Tests;
 
 public class ParserAndExpressionTests
 {
@@ -78,4 +78,5 @@ public class ParserAndExpressionTests
         await Assert.That(unresolved).IsEqualTo("MissingLabel");
     }
 }
+
 

@@ -1,4 +1,4 @@
-namespace Asm6808.Core.Assembly;
+namespace Hero6808.Core.Assembly;
 
 internal readonly record struct OpcodeEncoding(byte Opcode, int OperandBytes);
 
@@ -150,4 +150,5 @@ internal static class OpcodeTable
         return Table.TryGetValue(mnemonic, out var variants) && variants.ContainsKey(mode);
     }
 }
+
 

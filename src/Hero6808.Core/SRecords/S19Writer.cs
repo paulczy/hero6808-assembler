@@ -1,7 +1,7 @@
 using System.Text;
-using Asm6808.Core.Assembly;
+using Hero6808.Core.Assembly;
 
-namespace Asm6808.Core.SRecords;
+namespace Hero6808.Core.SRecords;
 
 public static class S19Writer
 {
@@ -96,4 +96,5 @@ public static class S19Writer
         return (byte)(~sum & 0xFF);
     }
 }
+
 

@@ -1,9 +1,9 @@
-using Asm6808.Core.Expressions;
-using Asm6808.Core.Parsing;
-using Asm6808.Core.SRecords;
+using Hero6808.Core.Expressions;
+using Hero6808.Core.Parsing;
+using Hero6808.Core.SRecords;
 using System.Diagnostics.CodeAnalysis;
 
-namespace Asm6808.Core.Assembly;
+namespace Hero6808.Core.Assembly;
 
 public sealed class Assembler6800
 {
@@ -431,4 +431,5 @@ public sealed class Assembler6800
         throw new InvalidOperationException($"{sourceName}:{lineNumber}: {message}");
     }
 }
+
 
