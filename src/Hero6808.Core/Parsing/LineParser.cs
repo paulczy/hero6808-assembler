@@ -6,14 +6,38 @@ public static partial class LineParser
 {
     private static readonly HashSet<string> Directives =
     [
+        "ALIGN",
+        "ASC",
+        "BSS",
+        "CLIST",
+        "CODE",
+        "CPU",
+        "DB",
+        "DUMMY",
+        "DS",
+        "DW",
         "END",
+        "ENDC",
+        "ENDIF",
+        "ENDM",
         "EQU",
+        "EXITM",
         "FCB",
         "FCC",
         "FDB",
+        "IF",
+        "ILIST",
+        "INCLUDE",
+        "LIST",
+        "MACRO",
+        "MLIST",
+        "NAM",
         "ORG",
+        "OUTPUT",
+        "PAGE",
         "RMB",
-        "SET"
+        "SET",
+        "TITLE"
     ];
 
     private static readonly HashSet<string> KnownMnemonics =
@@ -78,7 +102,9 @@ public static partial class LineParser
         "INX",
         "JMP",
         "JSR",
+        "LDA",
         "LDAA",
+        "LDB",
         "LDAB",
         "LDS",
         "LDX",
@@ -89,6 +115,7 @@ public static partial class LineParser
         "NEGA",
         "NEGB",
         "NOP",
+        "ORA",
         "ORAA",
         "ORAB",
         "PSHA",
@@ -112,7 +139,9 @@ public static partial class LineParser
         "SET",
         "SEI",
         "SEV",
+        "STA",
         "STAA",
+        "STB",
         "STAB",
         "STS",
         "STX",
@@ -148,6 +177,17 @@ public static partial class LineParser
 
         if (codePart.StartsWith('*'))
         {
+            var remainder = codePart[1..].TrimStart();
+            if (remainder.StartsWith("=", StringComparison.Ordinal))
+            {
+                return new ParsedLine(
+                    LineNumber: lineNumber,
+                    RawText: rawLine,
+                    Label: null,
+                    Mnemonic: "ORG",
+                    OperandText: remainder[1..].Trim());
+            }
+
             return null;
         }
 
@@ -178,16 +218,23 @@ public static partial class LineParser
             mnemonic = tokens[1].ToUpperInvariant();
             operandText = RemainingTokenText(codePart, tokens[0], tokens[1]);
         }
-        else if (IsKnownMnemonicOrDirective(tokens[0]))
+        else if (tokens.Length >= 2 && tokens[1] == "=")
         {
-            mnemonic = tokens[0].ToUpperInvariant();
-            operandText = RemainingTokenText(codePart, tokens[0]);
+            label = tokens[0];
+            mnemonic = "SET";
+            operandText = RemainingTokenText(codePart, tokens[0], tokens[1]);
         }
-        else if (tokens.Length >= 2 && IsKnownMnemonicOrDirective(tokens[1]))
+        else if (tokens.Length >= 2 && IsKnownMnemonicOrDirective(tokens[1]) &&
+                 (!IsKnownMnemonicOrDirective(tokens[0]) || !hasLeadingWhitespace))
         {
             label = tokens[0];
             mnemonic = tokens[1].ToUpperInvariant();
             operandText = RemainingTokenText(codePart, tokens[0], tokens[1]);
+        }
+        else if (IsKnownMnemonicOrDirective(tokens[0]))
+        {
+            mnemonic = tokens[0].ToUpperInvariant();
+            operandText = RemainingTokenText(codePart, tokens[0]);
         }
         else if (tokens.Length == 1)
         {
@@ -227,8 +274,49 @@ public static partial class LineParser
 
     private static string StripComment(string rawLine)
     {
-        var commentIndex = rawLine.IndexOf(';');
-        return commentIndex >= 0 ? rawLine[..commentIndex] : rawLine;
+        var inSingleQuote = false;
+        var inDoubleQuote = false;
+
+        for (var i = 0; i < rawLine.Length; i++)
+        {
+            var ch = rawLine[i];
+            if (ch == '\'' && !inDoubleQuote)
+            {
+                if (inSingleQuote)
+                {
+                    inSingleQuote = false;
+                    continue;
+                }
+
+                // Quoted literal like 'A' or ' '.
+                if (i + 2 < rawLine.Length && rawLine[i + 2] == '\'')
+                {
+                    inSingleQuote = true;
+                    continue;
+                }
+
+                // Motorola prefix-char form like 'G: consume next char as data.
+                if (i + 1 < rawLine.Length)
+                {
+                    i++;
+                }
+
+                continue;
+            }
+
+            if (ch == '"' && !inSingleQuote)
+            {
+                inDoubleQuote = !inDoubleQuote;
+                continue;
+            }
+
+            if (ch == ';' && !inSingleQuote && !inDoubleQuote)
+            {
+                return rawLine[..i];
+            }
+        }
+
+        return rawLine;
     }
 
     private static string RemainingTokenText(string source, params string[] consumedTokens)

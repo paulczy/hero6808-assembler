@@ -255,6 +255,234 @@ public class Assembler6800Tests
         await Assert.That(records.Count).IsGreaterThan(1);
     }
 
+    [Test]
+    public async Task Assemble_CrasmStyleScodeSource_MatchesExpectedS19()
+    {
+        var source = new[]
+        {
+            "cpu 6800",
+            "* = $1000",
+            "output scode",
+            "code",
+            "ldx #PHRASE",
+            "stx $0303",
+            "jsr $8000",
+            "rts",
+            "PHRASE DB $1B, $02, $23",
+            "DB $18, $23, $35",
+            "DB $37, $03, $2D",
+            "DB $3A, $2B, $18",
+            "DB $1E, $3E",
+            "DB $FF",
+            "clra",
+            "jsr $ec3c",
+            "rts",
+            "ldaa #$aa",
+            "jsr $ec3c",
+            "rts",
+            "code",
+            "end"
+        };
+
+        var expected = new[]
+        {
+            "S1131000CE100AFF0303BD8000391B0223182335C9",
+            "S113101037032D3A2B181E3EFF4FBDEC3C3986AAF0",
+            "S1071020BDEC3C39AA",
+            "S9030000FC"
+        };
+
+        var assembler = new Assembler6800();
+        var actual = assembler.AssembleToS19Records(source, sourceName: "crasm.asm");
+
+        await Assert.That(actual.SequenceEqual(expected)).IsTrue();
+    }
+
+    [Test]
+    public async Task Assemble_CrasmCopy6800Style_MatchesReferenceS19()
+    {
+        var source = new[]
+        {
+            "cpu 6800",
+            "* = $8000",
+            "begin  = $40",
+            "dest   = $42",
+            "len    = $44",
+            "ldx  #$4000",
+            "stx  begin",
+            "ldx  #$1430",
+            "stx  len",
+            "ldx  #$6000",
+            "stx  dest",
+            "jsr  copy",
+            "wai",
+            "code",
+            "copy ldx begin",
+            "sts begin",
+            "txs",
+            "ldx dest",
+            "ldab len+1",
+            "ldaa len",
+            "addb dest+1",
+            "adca dest",
+            "stab dest+1",
+            "staa dest",
+            ".1 cpx dest",
+            "beq .2",
+            "pula",
+            "staa 0,x",
+            "inx",
+            "bra .1",
+            ".2 tsx",
+            "lds begin",
+            "stx begin",
+            "clr len",
+            "clr len+1",
+            "rts",
+            "code"
+        };
+
+        var expected = new[]
+        {
+            "S1138000CE4000DF40CE1430DF44CE6000DF42BDFE",
+            "S113801080133EDE409F4035DE42D6459644DB4326",
+            "S11380209942D74397429C42270632A7000820F67C",
+            "S10F8030309E40DF407F00447F00453953",
+            "S9030000FC"
+        };
+
+        var assembler = new Assembler6800();
+        var actual = assembler.AssembleToS19Records(source, sourceName: "copy.6800.asm");
+
+        await Assert.That(actual.SequenceEqual(expected)).IsTrue();
+    }
+
+    [Test]
+    public async Task Assemble_CrasmMemcpy6800Style_MatchesReferenceS19()
+    {
+        var source = new[]
+        {
+            "page 66,264",
+            "cpu 6800",
+            "* = $1000",
+            "cnt dw $0000",
+            "src dw $0000",
+            "dst dw $0000",
+            "memcpy ldab cnt+1",
+            "beq check",
+            "loop ldx src",
+            "ldaa ,x",
+            "inx",
+            "stx src",
+            "ldx dst",
+            "staa ,x",
+            "inx",
+            "stx dst",
+            "decb",
+            "bne loop",
+            "stab cnt+1",
+            "check tst cnt+0",
+            "beq done",
+            "dec cnt+0",
+            "bra loop",
+            "done rts"
+        };
+
+        var expected = new[]
+        {
+            "S1131000000000000000F610012718FE1002A600E0",
+            "S113101008FF1002FE1004A70008FF10045A26EB74",
+            "S1111020F710017D100027057A100020DE393C",
+            "S9030000FC"
+        };
+
+        var assembler = new Assembler6800();
+        var actual = assembler.AssembleToS19Records(source, sourceName: "memcpy.6800.asm");
+
+        await Assert.That(actual.SequenceEqual(expected)).IsTrue();
+    }
+
+    [Test]
+    public async Task Assemble_CrasmAscAndDs_EmitsExpectedBytes()
+    {
+        var source = new[]
+        {
+            "cpu 6800",
+            "* = $1000",
+            "nam testprog",
+            "title \"Test\"",
+            "asc \"HI\\0\"",
+            "ds 2,$FF",
+            "end"
+        };
+
+        var expected = new[]
+        {
+            "S1081000484900FFFF58",
+            "S9030000FC"
+        };
+
+        var assembler = new Assembler6800();
+        var actual = assembler.AssembleToS19Records(source, sourceName: "crasm-asc-ds.asm");
+
+        await Assert.That(actual.SequenceEqual(expected)).IsTrue();
+    }
+
+    [Test]
+    public async Task Assemble_AcceptsCommonAliasMnemonicsForARegister()
+    {
+        var source = new[]
+        {
+            "ORG $0200",
+            "LDA #$12",
+            "ORA #$01",
+            "STA $10",
+            "END"
+        };
+
+        var assembler = new Assembler6800();
+        var result = assembler.Assemble(source, sourceName: "aliases.asm");
+        var segment = result.Segments[0];
+
+        await Assert.That(segment.Data.SequenceEqual(new byte[] { 0x86, 0x12, 0x8A, 0x01, 0x97, 0x10 })).IsTrue();
+    }
+
+    [Test]
+    public async Task Assemble_DbSupportsQuotedStringItems()
+    {
+        var source = new[]
+        {
+            "ORG $1000",
+            "DB \"HI\",',',0",
+            "END"
+        };
+
+        var assembler = new Assembler6800();
+        var result = assembler.Assemble(source, sourceName: "db-string.asm");
+        var segment = result.Segments[0];
+
+        await Assert.That(segment.Data.SequenceEqual(new byte[] { 0x48, 0x49, 0x2C, 0x00 })).IsTrue();
+    }
+
+    [Test]
+    public async Task Assemble_RelaxesOutOfRangeBsrToJsrExtended()
+    {
+        var source = new[]
+        {
+            "ORG $0100",
+            "BSR far_target",
+            "RMB $90",
+            "far_target RTS",
+            "END"
+        };
+
+        var assembler = new Assembler6800();
+        var result = assembler.Assemble(source, sourceName: "bsr-relax.asm");
+        var segment = result.Segments.Single(s => s.StartAddress == 0x0100);
+
+        await Assert.That(segment.Data.Take(3).SequenceEqual(new byte[] { 0xBD, 0x01, 0x93 })).IsTrue();
+    }
+
     private static bool ContainsSubsequence(byte[] data, params byte[] pattern)
     {
         if (pattern.Length == 0 || pattern.Length > data.Length)

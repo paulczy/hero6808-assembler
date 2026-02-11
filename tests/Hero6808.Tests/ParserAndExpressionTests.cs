@@ -52,6 +52,26 @@ public class ParserAndExpressionTests
     }
 
     [Test]
+    public async Task LineParser_ParsesIndentedLabelWhenFollowedByKnownMnemonic()
+    {
+        var parsed = LineParser.Parse("  l1   clr 0,x", 11);
+        await Assert.That(parsed is not null).IsTrue();
+        await Assert.That(parsed!.Label).IsEqualTo("l1");
+        await Assert.That(parsed.Mnemonic).IsEqualTo("CLR");
+        await Assert.That(parsed.OperandText).IsEqualTo("0,x");
+    }
+
+    [Test]
+    public async Task LineParser_ParsesLabelEqualsAsSetDirective()
+    {
+        var parsed = LineParser.Parse("begin = $40", 3);
+        await Assert.That(parsed is not null).IsTrue();
+        await Assert.That(parsed!.Label).IsEqualTo("begin");
+        await Assert.That(parsed.Mnemonic).IsEqualTo("SET");
+        await Assert.That(parsed.OperandText).IsEqualTo("$40");
+    }
+
+    [Test]
     public async Task LineParser_ParsesSingleTokenKnownMnemonicWithoutIndent()
     {
         var parsed = LineParser.Parse("PSHX", 11);
@@ -86,6 +106,36 @@ public class ParserAndExpressionTests
 
         await Assert.That(ok).IsFalse();
         await Assert.That(unresolved).IsEqualTo("MissingLabel");
+    }
+
+    [Test]
+    public async Task ExpressionEvaluator_ResolvesDottedSymbols()
+    {
+        var symbols = new Dictionary<string, int>
+        {
+            [".1"] = 0x1234
+        };
+
+        var ok = ExpressionEvaluator.TryEvaluate(".1+1", symbols, out var value, out var unresolved);
+
+        await Assert.That(ok).IsTrue();
+        await Assert.That(unresolved).IsNull();
+        await Assert.That(value).IsEqualTo(0x1235);
+    }
+
+    [Test]
+    public async Task ExpressionEvaluator_SupportsUnaryBitwiseNotAndCurrentAddress()
+    {
+        var symbols = new Dictionary<string, int>
+        {
+            ["FALSE"] = 0
+        };
+
+        await Assert.That(ExpressionEvaluator.TryEvaluate("~FALSE", symbols, out var inv, out _, currentAddress: null)).IsTrue();
+        await Assert.That(inv).IsEqualTo(-1);
+
+        await Assert.That(ExpressionEvaluator.TryEvaluate("$2400-*", symbols, out var delta, out _, currentAddress: 0x2300)).IsTrue();
+        await Assert.That(delta).IsEqualTo(0x0100);
     }
 }
 
