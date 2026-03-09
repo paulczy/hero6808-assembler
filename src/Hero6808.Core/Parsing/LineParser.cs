@@ -17,6 +17,7 @@ public static partial class LineParser
         "DS",
         "DW",
         "END",
+        "ELSE",
         "ENDC",
         "ENDIF",
         "ENDM",

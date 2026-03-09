@@ -570,9 +570,15 @@ public sealed class Assembler6800
     {
         var widened = new HashSet<int>();
         var direct = new HashSet<int>();
+        var seenStates = new HashSet<string>(StringComparer.Ordinal);
 
         while (true)
         {
+            if (!seenStates.Add(FormatLayoutState(widened, direct)))
+            {
+                ThrowDiagnostic(sourceName, lines[^1].LineNumber, "layout resolution did not converge.");
+            }
+
             var symbols = BuildSymbolTable(lines, sourceName, widened, direct);
             var nextDirect = FindDirectModeLines(lines, symbols, sourceName, direct, widened);
             var branchSymbols = direct.SetEquals(nextDirect)
@@ -599,6 +605,11 @@ public sealed class Assembler6800
                 return new LayoutDecisions(widened, direct);
             }
         }
+    }
+
+    private static string FormatLayoutState(ISet<int> widened, ISet<int> direct)
+    {
+        return $"W:{string.Join(',', widened.Order())}|D:{string.Join(',', direct.Order())}";
     }
 
     private static HashSet<int> FindDirectModeLines(
@@ -805,7 +816,17 @@ public sealed class Assembler6800
 
             if (mnemonic == "ELSE")
             {
+                if (conditionals.Count == 0)
+                {
+                    ThrowDiagnostic(sourceName, line.LineNumber, "ELSE without matching IF.");
+                }
+
                 var frame = conditionals.Pop();
+                if (frame.ElseSeen)
+                {
+                    ThrowDiagnostic(sourceName, line.LineNumber, "duplicate ELSE for IF block.");
+                }
+
                 conditionals.Push((frame.ParentActive, frame.ConditionTrue, true));
                 isActive = frame.ParentActive && !frame.ConditionTrue;
                 continue;
@@ -813,6 +834,11 @@ public sealed class Assembler6800
 
             if (mnemonic is "ENDC" or "ENDIF")
             {
+                if (conditionals.Count == 0)
+                {
+                    ThrowDiagnostic(sourceName, line.LineNumber, "ENDC/ENDIF without matching IF.");
+                }
+
                 var frame = conditionals.Pop();
                 isActive = frame.ParentActive;
                 continue;
@@ -1495,5 +1521,4 @@ public sealed class Assembler6800
         throw new InvalidOperationException($"{sourceName}:{lineNumber}: {message}");
     }
 }
-
 

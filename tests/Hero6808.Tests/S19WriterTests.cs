@@ -67,6 +67,35 @@ public class S19WriterTests
     }
 
     [Test]
+    public async Task WriteRecords_HandlesMultipleSegments()
+    {
+        var segments = new[]
+        {
+            new AddressedBytes(0x0200, [0x01, 0x02]),
+            new AddressedBytes(0x0100, [0x03, 0x04])
+        };
+
+        var records = S19Writer.WriteRecords(segments);
+
+        // Should have 2 S1 data records + 1 S9 terminator
+        await Assert.That(records.Count).IsEqualTo(3);
+        // Records should be sorted by address (0x0100 before 0x0200)
+        await Assert.That(records[0].StartsWith("S10501000304")).IsTrue();
+        await Assert.That(records[1].StartsWith("S10502000102")).IsTrue();
+        await Assert.That(records[2].StartsWith("S9")).IsTrue();
+    }
+
+    [Test]
+    public async Task WriteRecords_HandlesEmptySegmentList()
+    {
+        var records = S19Writer.WriteRecords([]);
+
+        // Should have just the S9 terminator
+        await Assert.That(records.Count).IsEqualTo(1);
+        await Assert.That(records[0].StartsWith("S9")).IsTrue();
+    }
+
+    [Test]
     public async Task WriteRecords_ThrowsWhenSegmentCrosses16BitAddressSpace()
     {
         var threw = false;
@@ -83,5 +112,4 @@ public class S19WriterTests
         await Assert.That(threw).IsTrue();
     }
 }
-
 

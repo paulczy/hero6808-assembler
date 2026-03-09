@@ -679,6 +679,243 @@ public class Assembler6800Tests
         await Assert.That(message).Contains("16-bit address space");
     }
 
+    [Test]
+    public async Task Assemble_ConditionalIfElseEndc_EmitsCorrectBranch()
+    {
+        var source = new[]
+        {
+            "DEBUG EQU 1",
+            "ORG $0200",
+            "IF DEBUG",
+            "LDAA #$FF",
+            "ELSE",
+            "LDAA #$00",
+            "ENDC",
+            "END"
+        };
+
+        var assembler = new Assembler6800();
+        var result = assembler.Assemble(source, sourceName: "if-else.asm");
+        var segment = result.Segments[0];
+
+        // DEBUG=1 so IF branch taken, ELSE branch skipped
+        await Assert.That(segment.Data.SequenceEqual(new byte[] { 0x86, 0xFF })).IsTrue();
+    }
+
+    [Test]
+    public async Task Assemble_ConditionalIfFalse_EmitsElseBranch()
+    {
+        var source = new[]
+        {
+            "DEBUG EQU 0",
+            "ORG $0200",
+            "IF DEBUG",
+            "LDAA #$FF",
+            "ELSE",
+            "LDAA #$00",
+            "ENDC",
+            "END"
+        };
+
+        var assembler = new Assembler6800();
+        var result = assembler.Assemble(source, sourceName: "if-false.asm");
+        var segment = result.Segments[0];
+
+        // DEBUG=0 so ELSE branch taken
+        await Assert.That(segment.Data.SequenceEqual(new byte[] { 0x86, 0x00 })).IsTrue();
+    }
+
+    [Test]
+    public async Task Assemble_ConditionalEndif_AcceptsEndifAsAlias()
+    {
+        var source = new[]
+        {
+            "FLAG EQU 1",
+            "ORG $0200",
+            "IF FLAG",
+            "NOP",
+            "ENDIF",
+            "END"
+        };
+
+        var assembler = new Assembler6800();
+        var result = assembler.Assemble(source, sourceName: "endif.asm");
+
+        await Assert.That(result.Segments[0].Data.SequenceEqual(new byte[] { 0x01 })).IsTrue();
+    }
+
+    [Test]
+    public async Task Assemble_ThrowsOnUnmatchedElse()
+    {
+        var source = new[]
+        {
+            "ORG $0200",
+            "ELSE",
+            "END"
+        };
+
+        var assembler = new Assembler6800();
+        var threw = false;
+        var message = string.Empty;
+
+        try
+        {
+            assembler.Assemble(source, sourceName: "bad-else.asm");
+        }
+        catch (InvalidOperationException ex)
+        {
+            threw = true;
+            message = ex.Message;
+        }
+
+        await Assert.That(threw).IsTrue();
+        await Assert.That(message).Contains("ELSE without matching IF");
+    }
+
+    [Test]
+    public async Task Assemble_ThrowsOnUnmatchedEndc()
+    {
+        var source = new[]
+        {
+            "ORG $0200",
+            "ENDC",
+            "END"
+        };
+
+        var assembler = new Assembler6800();
+        var threw = false;
+        var message = string.Empty;
+
+        try
+        {
+            assembler.Assemble(source, sourceName: "bad-endc.asm");
+        }
+        catch (InvalidOperationException ex)
+        {
+            threw = true;
+            message = ex.Message;
+        }
+
+        await Assert.That(threw).IsTrue();
+        await Assert.That(message).Contains("ENDC/ENDIF without matching IF");
+    }
+
+    [Test]
+    public async Task Assemble_ThrowsOnUnterminatedIf()
+    {
+        var source = new[]
+        {
+            "FLAG EQU 1",
+            "ORG $0200",
+            "IF FLAG",
+            "NOP",
+            "END"
+        };
+
+        var assembler = new Assembler6800();
+        var threw = false;
+        var message = string.Empty;
+
+        try
+        {
+            assembler.Assemble(source, sourceName: "unterminated-if.asm");
+        }
+        catch (InvalidOperationException ex)
+        {
+            threw = true;
+            message = ex.Message;
+        }
+
+        await Assert.That(threw).IsTrue();
+        await Assert.That(message).Contains("unterminated IF block");
+    }
+
+    [Test]
+    public async Task Assemble_ConditionalComparison_EmitsCorrectly()
+    {
+        var source = new[]
+        {
+            "VER EQU 2",
+            "ORG $0200",
+            "IF VER>1",
+            "LDAA #$01",
+            "ENDC",
+            "IF VER=1",
+            "LDAA #$02",
+            "ENDC",
+            "END"
+        };
+
+        var assembler = new Assembler6800();
+        var result = assembler.Assemble(source, sourceName: "if-compare.asm");
+        var segment = result.Segments[0];
+
+        // VER=2 > 1 is true, VER=2 = 1 is false
+        await Assert.That(segment.Data.SequenceEqual(new byte[] { 0x86, 0x01 })).IsTrue();
+    }
+
+    [Test]
+    public async Task Assemble_MultipleSegments_ProducesNonContiguousOutput()
+    {
+        var source = new[]
+        {
+            "ORG $0100",
+            "NOP",
+            "ORG $0200",
+            "NOP",
+            "END"
+        };
+
+        var assembler = new Assembler6800();
+        var result = assembler.Assemble(source, sourceName: "multi-seg.asm");
+
+        await Assert.That(result.Segments.Count).IsEqualTo(2);
+        await Assert.That(result.Segments[0].StartAddress).IsEqualTo((ushort)0x0100);
+        await Assert.That(result.Segments[1].StartAddress).IsEqualTo((ushort)0x0200);
+    }
+
+    [Test]
+    public async Task Assemble_MultipleSegments_S19OutputIsSorted()
+    {
+        var source = new[]
+        {
+            "ORG $0300",
+            "NOP",
+            "ORG $0100",
+            "NOP",
+            "END"
+        };
+
+        var assembler = new Assembler6800();
+        var records = assembler.AssembleToS19Records(source, sourceName: "multi-s19.asm");
+
+        // First data record should be the lower address
+        await Assert.That(records[0].StartsWith("S104010001")).IsTrue();
+        await Assert.That(records[1].StartsWith("S104030001")).IsTrue();
+    }
+
+    [Test]
+    public async Task Assemble_OrgBackwards_CreatesNewSegment()
+    {
+        var source = new[]
+        {
+            "ORG $0200",
+            "LDAA #$01",
+            "ORG $0100",
+            "LDAA #$02",
+            "END"
+        };
+
+        var assembler = new Assembler6800();
+        var result = assembler.Assemble(source, sourceName: "org-back.asm");
+
+        await Assert.That(result.Segments.Count).IsEqualTo(2);
+        var seg1 = result.Segments.Single(s => s.StartAddress == 0x0200);
+        var seg2 = result.Segments.Single(s => s.StartAddress == 0x0100);
+        await Assert.That(seg1.Data.SequenceEqual(new byte[] { 0x86, 0x01 })).IsTrue();
+        await Assert.That(seg2.Data.SequenceEqual(new byte[] { 0x86, 0x02 })).IsTrue();
+    }
+
     private static bool ContainsSubsequence(byte[] data, params byte[] pattern)
     {
         if (pattern.Length == 0 || pattern.Length > data.Length)
@@ -724,6 +961,5 @@ public class Assembler6800Tests
         throw new InvalidOperationException("Could not locate repository root from test base directory.");
     }
 }
-
 
 

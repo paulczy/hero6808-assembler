@@ -3,7 +3,7 @@ using System.Text.RegularExpressions;
 
 namespace Hero6808.Core.Expressions;
 
-public static class ExpressionEvaluator
+public static partial class ExpressionEvaluator
 {
     public static bool TryEvaluate(
         string expression,
@@ -105,8 +105,11 @@ public static class ExpressionEvaluator
 
     private static bool IsSymbol(string term)
     {
-        return Regex.IsMatch(term, "^[A-Za-z_.][A-Za-z0-9_.]*$");
+        return SymbolRegex().IsMatch(term);
     }
+
+    [GeneratedRegex("^[A-Za-z_.][A-Za-z0-9_.]*$")]
+    private static partial Regex SymbolRegex();
 
     private sealed class Parser(string expression, IReadOnlyDictionary<string, int> symbols, int? currentAddress)
     {

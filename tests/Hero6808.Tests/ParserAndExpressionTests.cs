@@ -137,6 +137,143 @@ public class ParserAndExpressionTests
         await Assert.That(ExpressionEvaluator.TryEvaluate("$2400-*", symbols, out var delta, out _, currentAddress: 0x2300)).IsTrue();
         await Assert.That(delta).IsEqualTo(0x0100);
     }
+
+    [Test]
+    public async Task ExpressionEvaluator_RespectsOperatorPrecedence()
+    {
+        var symbols = new Dictionary<string, int>();
+
+        // Multiplication before addition
+        await Assert.That(ExpressionEvaluator.TryEvaluate("2+3*4", symbols, out var val1, out _)).IsTrue();
+        await Assert.That(val1).IsEqualTo(14);
+
+        // Parentheses override precedence
+        await Assert.That(ExpressionEvaluator.TryEvaluate("(2+3)*4", symbols, out var val2, out _)).IsTrue();
+        await Assert.That(val2).IsEqualTo(20);
+    }
+
+    [Test]
+    public async Task ExpressionEvaluator_HandlesNestedParentheses()
+    {
+        var symbols = new Dictionary<string, int>();
+
+        await Assert.That(ExpressionEvaluator.TryEvaluate("((2+3)*(4-1))", symbols, out var val, out _)).IsTrue();
+        await Assert.That(val).IsEqualTo(15);
+    }
+
+    [Test]
+    public async Task ExpressionEvaluator_DivisionByZeroReturnsFalse()
+    {
+        var symbols = new Dictionary<string, int>();
+
+        var ok = ExpressionEvaluator.TryEvaluate("10/0", symbols, out _, out _);
+        await Assert.That(ok).IsFalse();
+    }
+
+    [Test]
+    public async Task ExpressionEvaluator_DivisionAndModuloWork()
+    {
+        var symbols = new Dictionary<string, int>();
+
+        await Assert.That(ExpressionEvaluator.TryEvaluate("10/3", symbols, out var div, out _)).IsTrue();
+        await Assert.That(div).IsEqualTo(3);
+    }
+
+    [Test]
+    public async Task ExpressionEvaluator_BitwiseAndOrXor()
+    {
+        var symbols = new Dictionary<string, int>();
+
+        await Assert.That(ExpressionEvaluator.TryEvaluate("$FF&$0F", symbols, out var andVal, out _)).IsTrue();
+        await Assert.That(andVal).IsEqualTo(0x0F);
+
+        await Assert.That(ExpressionEvaluator.TryEvaluate("$F0|$0F", symbols, out var orVal, out _)).IsTrue();
+        await Assert.That(orVal).IsEqualTo(0xFF);
+
+        await Assert.That(ExpressionEvaluator.TryEvaluate("$FF^$0F", symbols, out var xorVal, out _)).IsTrue();
+        await Assert.That(xorVal).IsEqualTo(0xF0);
+    }
+
+    [Test]
+    public async Task ExpressionEvaluator_ShiftOperators()
+    {
+        var symbols = new Dictionary<string, int>();
+
+        await Assert.That(ExpressionEvaluator.TryEvaluate("1<<4", symbols, out var left, out _)).IsTrue();
+        await Assert.That(left).IsEqualTo(16);
+
+        await Assert.That(ExpressionEvaluator.TryEvaluate("$80>>4", symbols, out var right, out _)).IsTrue();
+        await Assert.That(right).IsEqualTo(8);
+    }
+
+    [Test]
+    public async Task ExpressionEvaluator_BinaryLiteral()
+    {
+        var symbols = new Dictionary<string, int>();
+
+        await Assert.That(ExpressionEvaluator.TryEvaluate("%10101010", symbols, out var val, out _)).IsTrue();
+        await Assert.That(val).IsEqualTo(0xAA);
+    }
+
+    [Test]
+    public async Task ExpressionEvaluator_HexSuffix()
+    {
+        var symbols = new Dictionary<string, int>();
+
+        await Assert.That(ExpressionEvaluator.TryEvaluate("0FFh", symbols, out var val, out _)).IsTrue();
+        await Assert.That(val).IsEqualTo(0xFF);
+    }
+
+    [Test]
+    public async Task ExpressionEvaluator_EmptyExpressionReturnsFalse()
+    {
+        var symbols = new Dictionary<string, int>();
+
+        var ok = ExpressionEvaluator.TryEvaluate("", symbols, out _, out _);
+        await Assert.That(ok).IsFalse();
+    }
+
+    [Test]
+    public async Task ExpressionEvaluator_UnaryNegation()
+    {
+        var symbols = new Dictionary<string, int>();
+
+        await Assert.That(ExpressionEvaluator.TryEvaluate("-1", symbols, out var val, out _)).IsTrue();
+        await Assert.That(val).IsEqualTo(-1);
+
+        await Assert.That(ExpressionEvaluator.TryEvaluate("-$10+$20", symbols, out var val2, out _)).IsTrue();
+        await Assert.That(val2).IsEqualTo(0x10);
+    }
+
+    [Test]
+    public async Task LineParser_ParsesLabelOnlyLine()
+    {
+        var parsed = LineParser.Parse("myLabel:", 5);
+        await Assert.That(parsed is not null).IsTrue();
+        await Assert.That(parsed!.Label).IsEqualTo("myLabel");
+        await Assert.That(parsed.Mnemonic).IsEqualTo(string.Empty);
+    }
+
+    [Test]
+    public async Task LineParser_ParsesEmptyLine()
+    {
+        var parsed = LineParser.Parse("", 1);
+        await Assert.That(parsed is null).IsTrue();
+
+        var parsed2 = LineParser.Parse("   ", 2);
+        await Assert.That(parsed2 is null).IsTrue();
+    }
+
+    [Test]
+    public async Task LineParser_PreservesOperandWithSemicolon()
+    {
+        // Semicolons in quotes should NOT be treated as comments
+        var parsed = LineParser.Parse("    FCC \"/hello;world/\"", 1);
+        await Assert.That(parsed is not null).IsTrue();
+        await Assert.That(parsed!.Mnemonic).IsEqualTo("FCC");
+        // The semicolon inside quotes is preserved
+        await Assert.That(parsed.OperandText.Contains(";")).IsTrue();
+    }
 }
 
 
