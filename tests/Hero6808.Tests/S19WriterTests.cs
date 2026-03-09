@@ -1,3 +1,4 @@
+using Hero6808.Core.Assembly;
 using Hero6808.Core.SRecords;
 
 namespace Hero6808.Tests;
@@ -63,6 +64,23 @@ public class S19WriterTests
 
         await Assert.That(threwLow).IsTrue();
         await Assert.That(threwHigh).IsTrue();
+    }
+
+    [Test]
+    public async Task WriteRecords_ThrowsWhenSegmentCrosses16BitAddressSpace()
+    {
+        var threw = false;
+
+        try
+        {
+            S19Writer.WriteRecords([new AddressedBytes(0xFFFF, [0x01, 0x02])]);
+        }
+        catch (ArgumentOutOfRangeException)
+        {
+            threw = true;
+        }
+
+        await Assert.That(threw).IsTrue();
     }
 }
 

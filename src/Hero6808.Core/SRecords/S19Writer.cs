@@ -25,6 +25,13 @@ public static class S19Writer
         var records = new List<string>();
         foreach (var segment in segments.OrderBy(s => s.StartAddress))
         {
+            if (segment.Data.Length > 0x10000 - segment.StartAddress)
+            {
+                throw new ArgumentOutOfRangeException(
+                    nameof(segments),
+                    $"Segment starting at 0x{segment.StartAddress:X4} exceeds the 16-bit address space.");
+            }
+
             var address = segment.StartAddress;
             var data = segment.Data.AsSpan();
             var index = 0;

@@ -483,6 +483,202 @@ public class Assembler6800Tests
         await Assert.That(segment.Data.Take(3).SequenceEqual(new byte[] { 0xBD, 0x01, 0x93 })).IsTrue();
     }
 
+    [Test]
+    public async Task Assemble_UsesStableAddressingForForwardDirectReference()
+    {
+        var source = new[]
+        {
+            "ORG $0000",
+            "LDAA target",
+            "NOP",
+            "target NOP",
+            "END"
+        };
+
+        var assembler = new Assembler6800();
+        var result = assembler.Assemble(source, sourceName: "forward-direct.asm");
+        var segment = result.Segments.Single(s => s.StartAddress == 0x0000);
+
+        await Assert.That(segment.Data.SequenceEqual(new byte[] { 0x96, 0x03, 0x01, 0x01 })).IsTrue();
+        await Assert.That(result.Symbols["target"]).IsEqualTo(0x0003);
+    }
+
+    [Test]
+    public async Task Assemble_ThrowsWhenOrgExceeds16BitAddressSpace()
+    {
+        var source = new[]
+        {
+            "ORG $10000",
+            "NOP",
+            "END"
+        };
+
+        var assembler = new Assembler6800();
+        var threw = false;
+        var message = string.Empty;
+
+        try
+        {
+            assembler.AssembleToS19Records(source, sourceName: "overflow-org.asm");
+        }
+        catch (InvalidOperationException ex)
+        {
+            threw = true;
+            message = ex.Message;
+        }
+
+        await Assert.That(threw).IsTrue();
+        await Assert.That(message).Contains("overflow-org.asm:1:");
+        await Assert.That(message).Contains("16-bit address space");
+    }
+
+    [Test]
+    public async Task Assemble_ThrowsWhenOperandDoesNotFitInstructionWidth()
+    {
+        var source = new[]
+        {
+            "ORG $0000",
+            "LDAA #$1234",
+            "END"
+        };
+
+        var assembler = new Assembler6800();
+        var threw = false;
+        var message = string.Empty;
+
+        try
+        {
+            assembler.Assemble(source, sourceName: "wide-immediate.asm");
+        }
+        catch (InvalidOperationException ex)
+        {
+            threw = true;
+            message = ex.Message;
+        }
+
+        await Assert.That(threw).IsTrue();
+        await Assert.That(message).Contains("wide-immediate.asm:2:");
+        await Assert.That(message).Contains("does not fit in 8 bits");
+    }
+
+    [Test]
+    public async Task Assemble_ThrowsWhenFdbValueExceeds16Bits()
+    {
+        var source = new[]
+        {
+            "ORG $0000",
+            "FDB $10000",
+            "END"
+        };
+
+        var assembler = new Assembler6800();
+        var threw = false;
+        var message = string.Empty;
+
+        try
+        {
+            assembler.Assemble(source, sourceName: "fdb-overflow.asm");
+        }
+        catch (InvalidOperationException ex)
+        {
+            threw = true;
+            message = ex.Message;
+        }
+
+        await Assert.That(threw).IsTrue();
+        await Assert.That(message).Contains("fdb-overflow.asm:2:");
+        await Assert.That(message).Contains("does not fit in 16 bits");
+    }
+
+    [Test]
+    public async Task Assemble_ThrowsWhenDbValueExceeds8Bits()
+    {
+        var source = new[]
+        {
+            "ORG $0000",
+            "DB $100",
+            "END"
+        };
+
+        var assembler = new Assembler6800();
+        var threw = false;
+        var message = string.Empty;
+
+        try
+        {
+            assembler.Assemble(source, sourceName: "db-overflow.asm");
+        }
+        catch (InvalidOperationException ex)
+        {
+            threw = true;
+            message = ex.Message;
+        }
+
+        await Assert.That(threw).IsTrue();
+        await Assert.That(message).Contains("db-overflow.asm:2:");
+        await Assert.That(message).Contains("does not fit in 8 bits");
+    }
+
+    [Test]
+    public async Task Assemble_ThrowsWhenDsFillExceeds8Bits()
+    {
+        var source = new[]
+        {
+            "ORG $0000",
+            "DS 4,$100",
+            "END"
+        };
+
+        var assembler = new Assembler6800();
+        var threw = false;
+        var message = string.Empty;
+
+        try
+        {
+            assembler.Assemble(source, sourceName: "ds-fill-overflow.asm");
+        }
+        catch (InvalidOperationException ex)
+        {
+            threw = true;
+            message = ex.Message;
+        }
+
+        await Assert.That(threw).IsTrue();
+        await Assert.That(message).Contains("ds-fill-overflow.asm:2:");
+        await Assert.That(message).Contains("does not fit in 8 bits");
+    }
+
+    [Test]
+    public async Task Assemble_ThrowsWhenCodeExceedsAddressSpace()
+    {
+        var source = new[]
+        {
+            "ORG $FFFE",
+            "NOP",
+            "NOP",
+            "NOP",
+            "END"
+        };
+
+        var assembler = new Assembler6800();
+        var threw = false;
+        var message = string.Empty;
+
+        try
+        {
+            assembler.Assemble(source, sourceName: "pc-overflow.asm");
+        }
+        catch (InvalidOperationException ex)
+        {
+            threw = true;
+            message = ex.Message;
+        }
+
+        await Assert.That(threw).IsTrue();
+        await Assert.That(message).Contains("pc-overflow.asm");
+        await Assert.That(message).Contains("16-bit address space");
+    }
+
     private static bool ContainsSubsequence(byte[] data, params byte[] pattern)
     {
         if (pattern.Length == 0 || pattern.Length > data.Length)

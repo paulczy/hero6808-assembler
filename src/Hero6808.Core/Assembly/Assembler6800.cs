@@ -7,6 +7,10 @@ namespace Hero6808.Core.Assembly;
 
 public sealed class Assembler6800
 {
+    private readonly record struct LayoutDecisions(
+        HashSet<int> WidenedBsrLines,
+        HashSet<int> DirectModeLines);
+
     private static readonly HashSet<string> Directives =
     [
         "ALIGN",
@@ -67,9 +71,9 @@ public sealed class Assembler6800
     public AssemblyResult Assemble(IEnumerable<string> sourceLines, string sourceName = "<input>")
     {
         var parsedLines = ParseLines(sourceLines);
-        var widenedBsrLines = ResolveFarBsrLines(parsedLines, sourceName);
-        var symbols = BuildSymbolTable(parsedLines, sourceName, widenedBsrLines);
-        var segments = EmitSegments(parsedLines, symbols, sourceName, widenedBsrLines);
+        var layout = ResolveLayoutDecisions(parsedLines, sourceName);
+        var symbols = BuildSymbolTable(parsedLines, sourceName, layout.WidenedBsrLines, layout.DirectModeLines);
+        var segments = EmitSegments(parsedLines, symbols, sourceName, layout.WidenedBsrLines, layout.DirectModeLines);
         return new AssemblyResult(segments, symbols);
     }
 
@@ -105,9 +109,11 @@ public sealed class Assembler6800
     private static Dictionary<string, int> BuildSymbolTable(
         IReadOnlyList<ParsedLine> lines,
         string sourceName,
-        ISet<int>? widenedBsrLines = null)
+        ISet<int>? widenedBsrLines = null,
+        ISet<int>? directModeLines = null)
     {
         widenedBsrLines ??= new HashSet<int>();
+        directModeLines ??= new HashSet<int>();
         var symbols = new Dictionary<string, int>(StringComparer.OrdinalIgnoreCase);
         var pc = 0;
         var conditionals = new Stack<(bool ParentActive, bool ConditionTrue, bool ElseSeen)>();
@@ -166,6 +172,7 @@ public sealed class Assembler6800
 
             if (line.Label is not null && mnemonic is not "EQU" and not "SET")
             {
+                EnsureAddressableProgramCounter(pc, sourceName, line.LineNumber);
                 symbols[line.Label] = pc;
             }
 
@@ -195,7 +202,10 @@ public sealed class Assembler6800
 
             if (mnemonic == "ORG")
             {
-                pc = EvaluateExpressionOrThrow(line, symbols, pc, sourceName);
+                pc = ValidateOriginAddressOrThrow(
+                    EvaluateExpressionOrThrow(line, symbols, pc, sourceName),
+                    sourceName,
+                    line.LineNumber);
                 continue;
             }
 
@@ -205,11 +215,12 @@ public sealed class Assembler6800
                 {
                     if (TryParseDbStringLiteral(item, line.LineNumber, sourceName, out var text))
                     {
-                        pc += text.Length;
+                        pc = AdvanceProgramCounter(pc, text.Length, sourceName, line.LineNumber, "DB string literal");
                     }
                     else
                     {
-                        pc += 1;
+                        EnsureAddressableProgramCounter(pc, sourceName, line.LineNumber);
+                        pc = AdvanceProgramCounter(pc, 1, sourceName, line.LineNumber, "DB value");
                     }
                 }
 
@@ -218,32 +229,52 @@ public sealed class Assembler6800
 
             if (mnemonic == "ASC")
             {
-                pc += ParseAscText(line.OperandText, line.LineNumber, sourceName).Length;
+                pc = AdvanceProgramCounter(
+                    pc,
+                    ParseAscText(line.OperandText, line.LineNumber, sourceName).Length,
+                    sourceName,
+                    line.LineNumber,
+                    "ASC text");
                 continue;
             }
 
             if (mnemonic == "FCC")
             {
-                pc += ParseFccText(line.OperandText, line.LineNumber, sourceName).Length;
+                pc = AdvanceProgramCounter(
+                    pc,
+                    ParseFccText(line.OperandText, line.LineNumber, sourceName).Length,
+                    sourceName,
+                    line.LineNumber,
+                    "FCC text");
                 continue;
             }
 
             if (mnemonic is "FDB" or "DW")
             {
-                pc += SplitCsv(line.OperandText).Count * 2;
+                pc = AdvanceProgramCounter(
+                    pc,
+                    SplitCsv(line.OperandText).Count * 2,
+                    sourceName,
+                    line.LineNumber,
+                    $"{mnemonic} data");
                 continue;
             }
 
             if (mnemonic == "RMB")
             {
-                pc += EvaluateExpressionOrThrow(line, symbols, pc, sourceName);
+                pc = AdvanceProgramCounter(
+                    pc,
+                    EvaluateExpressionOrThrow(line, symbols, pc, sourceName),
+                    sourceName,
+                    line.LineNumber,
+                    "RMB reservation");
                 continue;
             }
 
             if (mnemonic == "DS")
             {
                 var (count, _) = ParseDsOperands(line, symbols, pc, sourceName);
-                pc += count;
+                pc = AdvanceProgramCounter(pc, count, sourceName, line.LineNumber, "DS reservation");
                 continue;
             }
 
@@ -259,7 +290,8 @@ public sealed class Assembler6800
 
             if (mnemonic == "BSR" && widenedBsrLines.Contains(line.LineNumber))
             {
-                pc += 3; // Relaxed to JSR extended.
+                EnsureAddressableProgramCounter(pc, sourceName, line.LineNumber);
+                pc = AdvanceProgramCounter(pc, 3, sourceName, line.LineNumber, "relaxed BSR");
                 continue;
             }
 
@@ -282,13 +314,14 @@ public sealed class Assembler6800
             }
 
             var normalizedLine = line with { Mnemonic = mnemonic };
-            var mode = ResolveAddressingMode(normalizedLine, symbols);
+            EnsureAddressableProgramCounter(pc, sourceName, line.LineNumber);
+            var mode = ResolveAddressingMode(normalizedLine, symbols, directModeLines);
             if (!OpcodeTable.TryGet(mnemonic, mode, out var encoding))
             {
                 ThrowDiagnostic(sourceName, line.LineNumber, $"mnemonic '{mnemonic}' does not support {mode} mode.");
             }
 
-            pc += 1 + encoding.OperandBytes;
+            pc = AdvanceProgramCounter(pc, 1 + encoding.OperandBytes, sourceName, line.LineNumber, $"{mnemonic} instruction");
         }
 
         if (conditionals.Count > 0)
@@ -303,9 +336,11 @@ public sealed class Assembler6800
         IReadOnlyList<ParsedLine> lines,
         IReadOnlyDictionary<string, int> symbols,
         string sourceName,
-        ISet<int>? widenedBsrLines = null)
+        ISet<int>? widenedBsrLines = null,
+        ISet<int>? directModeLines = null)
     {
         widenedBsrLines ??= new HashSet<int>();
+        directModeLines ??= new HashSet<int>();
         var segments = new List<AddressedBytes>();
         var currentData = new List<byte>();
         ushort? currentSegmentStart = null;
@@ -325,6 +360,7 @@ public sealed class Assembler6800
 
         void EmitByte(byte value)
         {
+            EnsureAddressableProgramCounter(pc, sourceName, lineNumber: null);
             if (currentSegmentStart is null)
             {
                 currentSegmentStart = (ushort)pc;
@@ -338,7 +374,7 @@ public sealed class Assembler6800
             }
 
             currentData.Add(value);
-            pc++;
+            pc = AdvanceProgramCounter(pc, 1, sourceName, lineNumber: null, "byte emission");
         }
 
         foreach (var line in lines)
@@ -404,7 +440,10 @@ public sealed class Assembler6800
 
             if (mnemonic == "ORG")
             {
-                pc = EvaluateExpressionOrThrow(line, symbols, pc, sourceName);
+                pc = ValidateOriginAddressOrThrow(
+                    EvaluateExpressionOrThrow(line, symbols, pc, sourceName),
+                    sourceName,
+                    line.LineNumber);
                 continue;
             }
 
@@ -423,6 +462,7 @@ public sealed class Assembler6800
                     }
 
                     var value = EvaluateExpressionOrThrow(line with { OperandText = item }, symbols, pc, sourceName);
+                    ValidateFitsInByteOrThrow(value, sourceName, line.LineNumber, $"{mnemonic} value");
                     EmitByte((byte)(value & 0xFF));
                 }
 
@@ -454,6 +494,7 @@ public sealed class Assembler6800
                 foreach (var item in SplitCsv(line.OperandText))
                 {
                     var value = EvaluateExpressionOrThrow(line with { OperandText = item }, symbols, pc, sourceName);
+                    ValidateFitsInWordOrThrow(value, sourceName, line.LineNumber, $"{mnemonic} value");
                     EmitByte((byte)((value >> 8) & 0xFF));
                     EmitByte((byte)(value & 0xFF));
                 }
@@ -463,13 +504,19 @@ public sealed class Assembler6800
 
             if (mnemonic == "RMB")
             {
-                pc += EvaluateExpressionOrThrow(line, symbols, pc, sourceName);
+                pc = AdvanceProgramCounter(
+                    pc,
+                    EvaluateExpressionOrThrow(line, symbols, pc, sourceName),
+                    sourceName,
+                    line.LineNumber,
+                    "RMB reservation");
                 continue;
             }
 
             if (mnemonic == "DS")
             {
                 var (count, fill) = ParseDsOperands(line, symbols, pc, sourceName);
+                ValidateFitsInByteOrThrow(fill, sourceName, line.LineNumber, "DS fill");
                 for (var i = 0; i < count; i++)
                 {
                     EmitByte((byte)(fill & 0xFF));
@@ -491,6 +538,7 @@ public sealed class Assembler6800
             if (mnemonic == "BSR" && widenedBsrLines.Contains(line.LineNumber))
             {
                 var target = EvaluateExpressionOrThrow(line, symbols, pc, sourceName);
+                ValidateFitsInWordOrThrow(target, sourceName, line.LineNumber, "JSR target");
                 EmitByte(0xBD); // JSR extended
                 EmitByte((byte)((target >> 8) & 0xFF));
                 EmitByte((byte)(target & 0xFF));
@@ -498,7 +546,7 @@ public sealed class Assembler6800
             }
 
             var normalizedLine = line with { Mnemonic = mnemonic };
-            var mode = ResolveAddressingMode(normalizedLine, symbols);
+            var mode = ResolveAddressingMode(normalizedLine, symbols, directModeLines);
             if (!OpcodeTable.TryGet(mnemonic, mode, out var encoding))
             {
                 ThrowDiagnostic(sourceName, line.LineNumber, $"mnemonic '{mnemonic}' does not support {mode} mode.");
@@ -518,13 +566,19 @@ public sealed class Assembler6800
         return segments;
     }
 
-    private static HashSet<int> ResolveFarBsrLines(IReadOnlyList<ParsedLine> lines, string sourceName)
+    private static LayoutDecisions ResolveLayoutDecisions(IReadOnlyList<ParsedLine> lines, string sourceName)
     {
         var widened = new HashSet<int>();
+        var direct = new HashSet<int>();
+
         while (true)
         {
-            var symbols = BuildSymbolTable(lines, sourceName, widened);
-            var newlyOutOfRange = FindOutOfRangeBsrLines(lines, symbols, sourceName, widened);
+            var symbols = BuildSymbolTable(lines, sourceName, widened, direct);
+            var nextDirect = FindDirectModeLines(lines, symbols, sourceName, direct, widened);
+            var branchSymbols = direct.SetEquals(nextDirect)
+                ? symbols
+                : BuildSymbolTable(lines, sourceName, widened, nextDirect);
+            var newlyOutOfRange = FindOutOfRangeBsrLines(lines, branchSymbols, sourceName, nextDirect, widened);
             var changed = false;
             foreach (var lineNumber in newlyOutOfRange)
             {
@@ -534,17 +588,198 @@ public sealed class Assembler6800
                 }
             }
 
+            if (!direct.SetEquals(nextDirect))
+            {
+                direct = nextDirect;
+                changed = true;
+            }
+
             if (!changed)
             {
-                return widened;
+                return new LayoutDecisions(widened, direct);
             }
         }
+    }
+
+    private static HashSet<int> FindDirectModeLines(
+        IReadOnlyList<ParsedLine> lines,
+        IReadOnlyDictionary<string, int> symbols,
+        string sourceName,
+        ISet<int> currentDirectModeLines,
+        ISet<int> widenedBsrLines)
+    {
+        var directModeLines = new HashSet<int>();
+        var pc = 0;
+        var conditionals = new Stack<(bool ParentActive, bool ConditionTrue, bool ElseSeen)>();
+        var isActive = true;
+
+        foreach (var line in lines)
+        {
+            var mnemonic = NormalizeMnemonic(line.Mnemonic);
+            if (mnemonic == "IF")
+            {
+                var cond = false;
+                if (isActive)
+                {
+                    cond = EvaluateConditionalExpressionOrThrow(line, symbols, pc, sourceName);
+                }
+
+                conditionals.Push((isActive, cond, false));
+                isActive = isActive && cond;
+                continue;
+            }
+
+            if (mnemonic == "ELSE")
+            {
+                if (conditionals.Count == 0)
+                {
+                    ThrowDiagnostic(sourceName, line.LineNumber, "ELSE without matching IF.");
+                }
+
+                var frame = conditionals.Pop();
+                if (frame.ElseSeen)
+                {
+                    ThrowDiagnostic(sourceName, line.LineNumber, "duplicate ELSE for IF block.");
+                }
+
+                conditionals.Push((frame.ParentActive, frame.ConditionTrue, true));
+                isActive = frame.ParentActive && !frame.ConditionTrue;
+                continue;
+            }
+
+            if (mnemonic is "ENDC" or "ENDIF")
+            {
+                if (conditionals.Count == 0)
+                {
+                    ThrowDiagnostic(sourceName, line.LineNumber, "ENDC/ENDIF without matching IF.");
+                }
+
+                var frame = conditionals.Pop();
+                isActive = frame.ParentActive;
+                continue;
+            }
+
+            if (!isActive || mnemonic.Length == 0 || mnemonic is "EQU" or "SET")
+            {
+                continue;
+            }
+
+            if (mnemonic == "ORG")
+            {
+                pc = ValidateOriginAddressOrThrow(
+                    EvaluateExpressionOrThrow(line, symbols, pc, sourceName),
+                    sourceName,
+                    line.LineNumber);
+                continue;
+            }
+
+            if (mnemonic is "FCB" or "DB")
+            {
+                foreach (var item in SplitCsv(line.OperandText))
+                {
+                    var count = TryParseDbStringLiteral(item, line.LineNumber, sourceName, out var text) ? text.Length : 1;
+                    pc = AdvanceProgramCounter(pc, count, sourceName, line.LineNumber, "DB data");
+                }
+
+                continue;
+            }
+
+            if (mnemonic == "ASC")
+            {
+                pc = AdvanceProgramCounter(
+                    pc,
+                    ParseAscText(line.OperandText, line.LineNumber, sourceName).Length,
+                    sourceName,
+                    line.LineNumber,
+                    "ASC text");
+                continue;
+            }
+
+            if (mnemonic == "FCC")
+            {
+                pc = AdvanceProgramCounter(
+                    pc,
+                    ParseFccText(line.OperandText, line.LineNumber, sourceName).Length,
+                    sourceName,
+                    line.LineNumber,
+                    "FCC text");
+                continue;
+            }
+
+            if (mnemonic is "FDB" or "DW")
+            {
+                pc = AdvanceProgramCounter(
+                    pc,
+                    SplitCsv(line.OperandText).Count * 2,
+                    sourceName,
+                    line.LineNumber,
+                    $"{mnemonic} data");
+                continue;
+            }
+
+            if (mnemonic == "RMB")
+            {
+                pc = AdvanceProgramCounter(
+                    pc,
+                    EvaluateExpressionOrThrow(line, symbols, pc, sourceName),
+                    sourceName,
+                    line.LineNumber,
+                    "RMB reservation");
+                continue;
+            }
+
+            if (mnemonic == "DS")
+            {
+                var (count, _) = ParseDsOperands(line, symbols, pc, sourceName);
+                pc = AdvanceProgramCounter(pc, count, sourceName, line.LineNumber, "DS reservation");
+                continue;
+            }
+
+            if (mnemonic == "END")
+            {
+                break;
+            }
+
+            if (IsCrAsmNoOpDirective(mnemonic))
+            {
+                continue;
+            }
+
+            if (mnemonic == "BSR" && widenedBsrLines.Contains(line.LineNumber))
+            {
+                pc = AdvanceProgramCounter(pc, 3, sourceName, line.LineNumber, "relaxed BSR");
+                continue;
+            }
+
+            var normalizedLine = line with { Mnemonic = mnemonic };
+            if (CanUseDirectMode(normalizedLine, symbols))
+            {
+                directModeLines.Add(line.LineNumber);
+            }
+
+            EnsureAddressableProgramCounter(pc, sourceName, line.LineNumber);
+            var mode = ResolveAddressingMode(normalizedLine, symbols, currentDirectModeLines);
+            if (!OpcodeTable.TryGet(mnemonic, mode, out var encoding))
+            {
+                ThrowDiagnostic(sourceName, line.LineNumber, $"mnemonic '{mnemonic}' does not support {mode} mode.");
+            }
+
+            pc = AdvanceProgramCounter(pc, 1 + encoding.OperandBytes, sourceName, line.LineNumber, $"{mnemonic} instruction");
+        }
+
+        if (conditionals.Count > 0)
+        {
+            ThrowDiagnostic(sourceName, lines[^1].LineNumber, "unterminated IF block (missing ENDC).");
+        }
+
+        return directModeLines;
     }
 
     private static HashSet<int> FindOutOfRangeBsrLines(
         IReadOnlyList<ParsedLine> lines,
         IReadOnlyDictionary<string, int> symbols,
         string sourceName,
+        ISet<int> directModeLines,
         ISet<int> widenedBsrLines)
     {
         var outOfRange = new HashSet<int>();
@@ -590,7 +825,10 @@ public sealed class Assembler6800
 
             if (mnemonic == "ORG")
             {
-                pc = EvaluateExpressionOrThrow(line, symbols, pc, sourceName);
+                pc = ValidateOriginAddressOrThrow(
+                    EvaluateExpressionOrThrow(line, symbols, pc, sourceName),
+                    sourceName,
+                    line.LineNumber);
                 continue;
             }
 
@@ -598,7 +836,8 @@ public sealed class Assembler6800
             {
                 foreach (var item in SplitCsv(line.OperandText))
                 {
-                    pc += TryParseDbStringLiteral(item, line.LineNumber, sourceName, out var text) ? text.Length : 1;
+                    var count = TryParseDbStringLiteral(item, line.LineNumber, sourceName, out var text) ? text.Length : 1;
+                    pc = AdvanceProgramCounter(pc, count, sourceName, line.LineNumber, "DB data");
                 }
 
                 continue;
@@ -606,32 +845,52 @@ public sealed class Assembler6800
 
             if (mnemonic == "ASC")
             {
-                pc += ParseAscText(line.OperandText, line.LineNumber, sourceName).Length;
+                pc = AdvanceProgramCounter(
+                    pc,
+                    ParseAscText(line.OperandText, line.LineNumber, sourceName).Length,
+                    sourceName,
+                    line.LineNumber,
+                    "ASC text");
                 continue;
             }
 
             if (mnemonic == "FCC")
             {
-                pc += ParseFccText(line.OperandText, line.LineNumber, sourceName).Length;
+                pc = AdvanceProgramCounter(
+                    pc,
+                    ParseFccText(line.OperandText, line.LineNumber, sourceName).Length,
+                    sourceName,
+                    line.LineNumber,
+                    "FCC text");
                 continue;
             }
 
             if (mnemonic is "FDB" or "DW")
             {
-                pc += SplitCsv(line.OperandText).Count * 2;
+                pc = AdvanceProgramCounter(
+                    pc,
+                    SplitCsv(line.OperandText).Count * 2,
+                    sourceName,
+                    line.LineNumber,
+                    $"{mnemonic} data");
                 continue;
             }
 
             if (mnemonic == "RMB")
             {
-                pc += EvaluateExpressionOrThrow(line, symbols, pc, sourceName);
+                pc = AdvanceProgramCounter(
+                    pc,
+                    EvaluateExpressionOrThrow(line, symbols, pc, sourceName),
+                    sourceName,
+                    line.LineNumber,
+                    "RMB reservation");
                 continue;
             }
 
             if (mnemonic == "DS")
             {
                 var (count, _) = ParseDsOperands(line, symbols, pc, sourceName);
-                pc += count;
+                pc = AdvanceProgramCounter(pc, count, sourceName, line.LineNumber, "DS reservation");
                 continue;
             }
 
@@ -654,24 +913,25 @@ public sealed class Assembler6800
                     outOfRange.Add(line.LineNumber);
                 }
 
-                pc += 2;
+                pc = AdvanceProgramCounter(pc, 2, sourceName, line.LineNumber, "BSR instruction");
                 continue;
             }
 
             if (mnemonic == "BSR" && widenedBsrLines.Contains(line.LineNumber))
             {
-                pc += 3;
+                pc = AdvanceProgramCounter(pc, 3, sourceName, line.LineNumber, "relaxed BSR");
                 continue;
             }
 
             var normalizedLine = line with { Mnemonic = mnemonic };
-            var mode = ResolveAddressingMode(normalizedLine, symbols);
+            EnsureAddressableProgramCounter(pc, sourceName, line.LineNumber);
+            var mode = ResolveAddressingMode(normalizedLine, symbols, directModeLines);
             if (!OpcodeTable.TryGet(mnemonic, mode, out var encoding))
             {
                 ThrowDiagnostic(sourceName, line.LineNumber, $"mnemonic '{mnemonic}' does not support {mode} mode.");
             }
 
-            pc += 1 + encoding.OperandBytes;
+            pc = AdvanceProgramCounter(pc, 1 + encoding.OperandBytes, sourceName, line.LineNumber, $"{mnemonic} instruction");
         }
 
         return outOfRange;
@@ -718,10 +978,12 @@ public sealed class Assembler6800
         var value = EvaluateExpressionOrThrow(line, symbols, pcAfterOpcode - 1, sourceName);
         if (operandBytes == 1)
         {
+            ValidateFitsInByteOrThrow(value, sourceName, line.LineNumber, $"{line.Mnemonic} operand");
             emitByte((byte)(value & 0xFF));
             return;
         }
 
+        ValidateFitsInWordOrThrow(value, sourceName, line.LineNumber, $"{line.Mnemonic} operand");
         emitByte((byte)((value >> 8) & 0xFF));
         emitByte((byte)(value & 0xFF));
     }
@@ -752,7 +1014,10 @@ public sealed class Assembler6800
         return value;
     }
 
-    private static AddressingMode ResolveAddressingMode(ParsedLine line, IReadOnlyDictionary<string, int> symbols)
+    private static AddressingMode ResolveAddressingMode(
+        ParsedLine line,
+        IReadOnlyDictionary<string, int> symbols,
+        ISet<int>? directModeLines = null)
     {
         if (line.Mnemonic is
             "BCC" or "BCS" or "BEQ" or "BGE" or "BGT" or "BHI" or "BLE" or "BLS" or "BLT" or "BMI" or "BNE" or
@@ -777,13 +1042,30 @@ public sealed class Assembler6800
             return AddressingMode.Indexed;
         }
 
-        if (OpcodeTable.SupportsMode(line.Mnemonic, AddressingMode.Direct) &&
-            TryResolveDirectValue(operand, symbols, out _))
+        if (CanUseDirectMode(line, symbols, directModeLines))
         {
             return AddressingMode.Direct;
         }
 
         return AddressingMode.Extended;
+    }
+
+    private static bool CanUseDirectMode(
+        ParsedLine line,
+        IReadOnlyDictionary<string, int> symbols,
+        ISet<int>? directModeLines = null)
+    {
+        if (!OpcodeTable.SupportsMode(line.Mnemonic, AddressingMode.Direct))
+        {
+            return false;
+        }
+
+        if (directModeLines?.Contains(line.LineNumber) == true)
+        {
+            return true;
+        }
+
+        return TryResolveDirectValue(line.OperandText.Trim(), symbols, out _);
     }
 
     private static bool IsDirectLiteral(string operand)
@@ -837,6 +1119,65 @@ public sealed class Assembler6800
         }
 
         return value;
+    }
+
+    private static int ValidateOriginAddressOrThrow(int value, string sourceName, int lineNumber)
+    {
+        if (value is < 0 or > 0xFFFF)
+        {
+            ThrowDiagnostic(sourceName, lineNumber, $"ORG address {value} is outside the 16-bit address space.");
+        }
+
+        return value;
+    }
+
+    private static int AdvanceProgramCounter(
+        int pc,
+        int delta,
+        string sourceName,
+        int? lineNumber,
+        string context)
+    {
+        if (delta < 0)
+        {
+            ThrowDiagnostic(sourceName, lineNumber ?? 0, $"{context} would move the program counter backwards.");
+        }
+
+        if (pc is < 0 or > 0xFFFF)
+        {
+            ThrowDiagnostic(sourceName, lineNumber ?? 0, $"program counter {pc} is outside the 16-bit address space.");
+        }
+
+        if (delta > 0x10000 - pc)
+        {
+            ThrowDiagnostic(sourceName, lineNumber ?? 0, $"{context} exceeds the 16-bit address space.");
+        }
+
+        return pc + delta;
+    }
+
+    private static void EnsureAddressableProgramCounter(int pc, string sourceName, int? lineNumber)
+    {
+        if (pc is < 0 or > 0xFFFF)
+        {
+            ThrowDiagnostic(sourceName, lineNumber ?? 0, $"program counter {pc} is outside the 16-bit address space.");
+        }
+    }
+
+    private static void ValidateFitsInByteOrThrow(int value, string sourceName, int lineNumber, string context)
+    {
+        if (value is < -128 or > 0xFF)
+        {
+            ThrowDiagnostic(sourceName, lineNumber, $"{context} value {value} does not fit in 8 bits.");
+        }
+    }
+
+    private static void ValidateFitsInWordOrThrow(int value, string sourceName, int lineNumber, string context)
+    {
+        if (value is < -32768 or > 0xFFFF)
+        {
+            ThrowDiagnostic(sourceName, lineNumber, $"{context} value {value} does not fit in 16 bits.");
+        }
     }
 
     private static bool EvaluateConditionalExpressionOrThrow(
